@@ -4,60 +4,8 @@
 """use for comments"""
 '''use for stings'''
 """
-This module contains all video types 
-Code:
+This module contains all video types
 
-from videos import VideoFromYoutubeURL, VideoFromImageURL, VideoFromText
-# import
-
-horror_11s = VideoFromYoutubeURL("https://www.youtube.com/watch?v=qiZLHchtX8c",
-                                 239, 250)
-        #  __init__ args:  link or video id, start time(st), end time(et)  
-# it is the same               video_id   st  et
-test = VideoFromYoutubeURL("qiZLHchtX8c", 56, 64)
-test.start_downloading_webm()
-while not test.get_is_downloaded():
-    from time import sleep
-    sleep(0.01)
-
-### you can save subclip without sound using
-### using
-
-
-# You can set **kwargs:
-# brightness, speed, volume and max_volume, rotate_image and inverted
-# like this. 
-rev9_8s = VideoFromYoutubeURL("2WemzwuAQF4", 56, 64, speed=0.9, volume=1.2)
-rev9_3s = VideoFromYoutubeURL("2WemzwuAQF4", 66, 69, speed=0.9, volume=1.2)
-
-
-# You can contencate videos.
-rev9_11s = rev9_8s + rev9_3s # in "2WemzwuAQF4" will skipped 64-66 
-
-
-# and you can separate_video and audio
-                    # video        audio
-sep_video_an_audio = rev9_11s / horror_11s
-
-
-# VideoFromImageURL exmple    # text      duration
-image_url = r"https://i.ibb.co/2K5q1y3/image.png"
-image_10s = VideoFromImageURL(image_url, 10)  #without sounds
-# you can set any kwargs, duration will be divided by speeding
-image_10s = VideoFromText("Any Text", 10, rotate=2)
-
-#you can add sound using
-image_with_sound_10s = image_10s / VideoFromYoutubeURL("7oEdx9IgPpo", 0, 10)
-
-
-# VideoFromText exmple
-text_8s = "Any text"
-text_8s = VideoFromImageURL(image_url, 10)  #without sounds
-# you can set any kwargs, duration will be divided by speeding
-text_8s = VideoFromText("Any Text", 8, inverted=True)
-
-#you can add sound using
-text_with_sound_8s = image_10s / VideoFromYoutubeURL("7oEdx9IgPpo", 10, 18)
 
 
 This module navigation
@@ -66,6 +14,93 @@ In the end of most important code strings is comment in format
 It means that you can use ***** in code search
 if you want to go to desired string
 
+
+
+Idea:
+    v = ... # creating video 1)    #  Use 'HglSFYJDDE' for search
+    while not v.get_is_downloaded(): # video itself loads everything 
+        from time import sleep       # that is part of it
+        sleep(0.01)                  # SO YOU NEED LOAD ONLY THE RESULT VIDEO
+    video_id = v.get_id()  # getting id (str) 1.1)
+    
+    # set the user's current viewing time frequently 
+    v.set_users_cur_viewing_time(t)   # often  2)
+    
+    cur_video_filename = get_video_filename(video_id, inside_time_range)
+    cur_audio_filename = get_audio_filename(video_id, inside_time_range)
+    # in file named cur_video_filename yours video part
+    # in file named cur_audio_filename yours audio part
+
+    # you can send it to your server or do with it whatever you want
+
+
+
+Code: Creating video: #  Use 'HglSFYJDDE' for search
+You can create this types of video
+    VideoFromYoutubeURL   #  Use 'j7ItYy3N2n' for search
+    VideoFromImageURL     #  Use 'fjR1wW8o9d' for search
+    VideoFromText         #  Use '55FPkUD5WO' for search
+
+    SumOfVideo               # or video1 + video2 #  Use '0kxprGdgk8' for search
+    SeparatedVideoAndAudio   # or video1 / video2 #  Use 'iPgx8iCcdC' for search
+
+
+
+from videos import VideoFromYoutubeURL, VideoFromImageURL, VideoFromText
+# import
+
+
+horror_11s = VideoFromYoutubeURL("https://www.youtube.com/watch?v=qiZLHchtX8c",
+                                 239, 250)     #  Use 'j7ItYy3N2n' for search
+        #  __init__ args:  link or video id, start time(st), end time(et)  
+# it is the same               video_id   st  et
+test = VideoFromYoutubeURL("qiZLHchtX8c", 56, 64)
+test.start_downloading_webm()
+
+
+# You can set **kwargs that in Settings:
+# brightness, speed, volume and max_volume and e.c.t.
+# like this. 
+rev9_8s = VideoFromYoutubeURL("2WemzwuAQF4", 56, 64, speed=0.9, volume=1.2)
+rev9_3s = VideoFromYoutubeURL("2WemzwuAQF4", 66, 69, speed=0.9, volume=1.2)
+
+
+
+# You can contencate videos.   #  Use '0kxprGdgk8' for search
+rev9_11s = rev9_8s + rev9_3s # in "2WemzwuAQF4" will skipped 64-66
+# it is the same rev9_11s = SumOfVideo(rev9_8s, rev9_3s)
+
+
+# and you can also separate_video and audio
+                    # video        audio
+sep_video_an_audio = rev9_11s / horror_11s
+# it is the same rev9_11s = SeparatedVideoAndAudio(rev9_11s, horror_11s)
+
+
+#!!! again what, you may not download videos immediately
+#!!! if you start load SumOfVideo or SeparatedVideoAndAudio it itself loads
+#!!! all its part 
+
+
+# VideoFromImageURL exmple    #  Use 'fjR1wW8o9d' for search
+image_url = r"https://i.ibb.co/2K5q1y3/image.png"
+image_10s = VideoFromImageURL(image_url, 10) # text duration; without sounds
+# you can set any kwargs, duration will be divided by speeding
+image_10s = VideoFromText("Any Text", 10, rotate=2)
+
+#you can add sound using
+image_with_sound_10s = image_10s / VideoFromYoutubeURL("7oEdx9IgPpo", 0, 10)
+
+
+# VideoFromText exmple    #  Use '55FPkUD5WO' for search
+text_8s = "Any text"
+text_8s = VideoFromImageURL(image_url, 10)  #without sounds
+# you can set any kwargs, duration will be divided by speeding
+text_8s = VideoFromText("Any Text", 8, inverted=True)
+
+#you can add sound using
+text_with_sound_8s = image_10s / VideoFromYoutubeURL("7oEdx9IgPpo", 10, 18)
+
 classes tree:
 │
 ├moviepy.editor.VideoFileClip══╗
@@ -73,7 +108,7 @@ classes tree:
 └Video┐                        ║    #  Use 'POFvmLHWHg' for search
   '''if isistance(v1, Video) and isistance(v2, Video) then
      v1 + v2 = SumOfVideo((v1, v2))
-     v1 / v2 = SeparatedVideoAndAudilo(video=v1, audio=v2)
+     v1 / v2 = SeparatedVideoAndAudio(video=v1, audio=v2)
   '''┌┘                        ║
      │                         ║
      ├VideoFromYoutubeURL══════╝    #  Use 'H6R9gbClEg' for search  
@@ -87,7 +122,7 @@ classes tree:
      │     └────VideoFromFrameFromYoutubeVideo═════╗
      │                              #  Use 'hBavQ96HNM' for search
      │     
-     ├SeparatedVideoAndAudilo       #  Use '0uceFGY5J0' for search   
+     ├SeparatedVideoAndAudio       #  Use '0uceFGY5J0' for search   
      │                               
      └SumOfVideo                    #  Use 'Ci1lua3fAb' for search  
              
@@ -106,7 +141,7 @@ class Video:    #  Use 'POFvmLHWHg' for search
         return SumOfVideo((self, other))
 
     def __div__(self, other):
-        return SeparatedVideoAndAudilo(self, other)
+        return SeparatedVideoAndAudio(self, other)
 
     @in_new_thread
     @print_time
@@ -215,7 +250,7 @@ class SumOfVideo(Video):              #  Use 'Ci1lua3fAb' for search
     pass
 
 
-class SeparatedVideoAndAudilo(Video): #  Use '0uceFGY5J0' for search
+class SeparatedVideoAndAudio(Video): #  Use '0uceFGY5J0' for search
     pass
 
 
