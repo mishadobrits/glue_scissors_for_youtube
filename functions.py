@@ -34,8 +34,13 @@ def print_time(func):
     return wrapper
 
 
-def update_stream_url(video_id):
-    FileDict("youtube_urls")[video_id] = pafy_new(video_id).getbest().url
+def get_stream_url(video_id):
+    return pafy_new(video_id).getbest().url
+
+
+def str_to_error_message(msg):
+    return "".join(list(msg.replace("\n", " ").split()))
+
 
 """
 @in_new_thread
