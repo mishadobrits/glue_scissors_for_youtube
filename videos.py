@@ -155,7 +155,9 @@ import numpy as np
 from bisect import bisect_right
 
 
-AUDIO_FPS, VIDEO_FPS = 44100, 25
+constants = FileDict("constants")
+AUDIO_FPS = constants.get_and_write("AUDIO_FPS", 44100)
+VIDEO_FPS = constants.get_and_write("VIDEO_FPS", 25)
 
 
 class Video:    #  Use 'POFvmLHWHg' for search
@@ -358,6 +360,17 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
 
 
 class PartOfVideo(Video):             #  Use '1U9YldMWW2' for search
+    """
+    part = PartOfVideo(your_video, start_time, end_time)  # or
+    part = your_video[start_time:end_time]
+
+    Create part of your video between start_time and end_time.
+        (PartOfVideo.get_frame and PartOfVideo.get_nextsound use your_video
+        methods takes into time range
+    PartOfVideo have own get_duration() method so if you use
+    SumOfVideo(video1[start1:end1], video2[start1:end1]) video1 and video2
+    don't have to overload get_duration
+    """
     def __init__(self, video, start_time, end_time):
         self.video = video
         self.start_time, self.end_time = start_time, end_time
@@ -408,7 +421,7 @@ class SumOfVideo(Video):              #  Use 'Ci1lua3fAb' for search
     Play video_1 after that play video_2 after that play video_3 and e.c.t.
     It loading video_i in correct time
     """
-    PRELOAD = 10
+    PRELOAD = constants.get_and_write("SumOfVideo.PRELOAD", 10)
     def __init__(self, videos_list):
         self.videos_list = videos_list
         self.is_video_load = [False] * len(videos_list)
@@ -587,11 +600,12 @@ def save(video_frames, audio_ndarray, name):
 
 
 #"""
-def main():    
+def main(i):    
     rev9_url = r"https://www.youtube.com/watch?v=2WemzwuAQF4" #t=56s"
     rev9_8s = VideoFromYoutubeURL(rev9_url)[56: 64]
     rev9_3s = VideoFromYoutubeURL(rev9_url)[66: 69]
     horror_url = r"https://www.youtube.com/watch?v=qiZLHchtX8c"
+    horror_8s = VideoFromYoutubeURL(horror_url)[239:247]
     horror_11s = VideoFromYoutubeURL(horror_url)[239:250]
 
     # print(dir(rev9_8s))
@@ -603,8 +617,8 @@ def main():
     #t = time.time()
     stream.save_next(5, "outname0-5")
     stream.save_next(5, "outname5-10")
-    print("---------------------------------")
+    print("---------------------------------" + str(i))
     #print(time.time() - t)
 # print(time.time() - t)
-for _ in range(100):
-    main()
+#for _ in range(100):
+main0()
