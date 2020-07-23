@@ -621,4 +621,4 @@ def main(i):
     #print(time.time() - t)
 # print(time.time() - t)
 #for _ in range(100):
-main0()
+main(0)
