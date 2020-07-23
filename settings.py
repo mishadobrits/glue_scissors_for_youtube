@@ -1,15 +1,15 @@
-# stupid_settings.py
+# setting.py
 
 
-class StupidSettings:
+SETTING_EXTENTION = "SVA_settings"
+
+
+class Settings:
     """
     you can change it, read from file, save to file,
     convert it to and from dict
     argumets
          you canspecify only one among (filepath, kwargs)
-         
-    __init__ argumets
-         you can specify only one among (filepath, kwargs)
              otherwise excecption will be raised
     ----filepath - Settings will be read from file
     ----kwargs in format global_speed=value
@@ -17,6 +17,7 @@ class StupidSettings:
                               ...
                          inverted=value
             some of them can be skipped
+
     fields: self.
       (float)
         loud_speed - accelerating loud parts of video/audio
@@ -27,6 +28,7 @@ class StupidSettings:
         max_quiet_time - the part of the video part that will be skipped
                          after max_quiet_time
         sound_threshold - border between loud sound and quiet sound
+
         volume_cooficient - multiplied by sound
         quiet_volume_cooficient - multiplied by sound in quiet video parts 
         loud_volume_cooficient - multiplied by sound in loud video parts 
@@ -35,17 +37,6 @@ class StupidSettings:
         resize - # number to !decrease! image
         brightness - number to make more bright
         contras_ratio - number to make more bright
-
-    fields: self.
-      (float)
-        speed - multiplyied by loud_speed & quiet_speed
-
-        volume_cooficient - multiplied by sound
-        max_volume - if cur_sound > max_volume: cur_sound = max_volume
-        
-        decrease -  number to !decrease! image
-        brightness - number to make more bright
-        contras_ratio - number to make more bright ???
         rotate_image (only 0, 1, 2, 3) - how many 90-turnes of video
         inverted (bool) - is image reversed relative vertical axis
         
@@ -139,24 +130,6 @@ class StupidSettings:
 
     def get_sound_threshold(self):
         return self.sound_threshold
-                # accelerating loud  parts of video/audio
-        self.speed = value("speed", 1)
-        #print(self.quiet_speed)
-        
-        self.volume_cooficient = value("volume_cooficient", 1) 
-        self.max_volume = value("max_volume", 1)  #maximal able volume
-        
-        self.decrease = value("decrease", 0.1)   # number to decrease image
-        self.brightness = value("brightness", 0)
-        self.contras_ratio = value("contras_ratio", 1)
-        self.rotate_image = value("rotate_image", 0)  # 0-3 (image angle)/90
-        self.inverted = value("video_fps", False)  
-                # invertion relative to vertical axis
-    def set_speed(self, value):
-        self.speed = abs(value)
-
-    def get_speed(self):
-        return self.speed  # * self.global_speed
 
     def set_volume_cooficient(self, value):
         self.volume_cooficient = abs(value)
@@ -182,11 +155,11 @@ class StupidSettings:
     def get_max_volume(self):
         return self.max_volume
 
-    def set_decrease(self, value):
-        self.decrease = abs(value)
+    def set_resize(self, value):
+        self.resize = abs(value)
 
-    def get_decrease(self):
-        return self.decrease
+    def get_resize(self):
+        return self.resize
 
     def get_brightness(self):
         return self.brightness
@@ -219,10 +192,16 @@ class StupidSettings:
         for inverse operation use smth = Settings(**dictionary)"""
         return {
             'global_speed': self.get_global_speed(),
-            'speed': self.get_speed(),
+            'loud_speed': self.get_loud_speed(),
+            'quiet_speed': self.get_quiet_speed(),
+            'min_quiet_time': self.get_min_quiet_time(),
+            'max_quiet_time': self.get_max_quiet_time(),
+            'sound_threshold': self.get_sound_threshold(),
             'volume_cooficient': self.get_volume_cooficient(),
+            'quiet_volume_cooficient': self.get_quiet_volume_cooficient(),
+            'loud_volume_cooficient': self.get_loud_volume_cooficient(),
             'max_volume': self.get_max_volume(),
-            'decrease': self.get_decrease(),
+            'resize': self.get_resize(),
             'brightness': self.get_brightness(),
             'contras_ratio': self.get_contras_ratio(),
             'rotate_image': self.get_rotate_image(),
@@ -249,15 +228,6 @@ class StupidSettings:
                       """.replace("\n", "")
             raise TypeError(message.format(new_settings, type(new_settings)))
         self = new_settings
-    """
-    def set_new_value(self, new_settings):
-        if type(new_settings) != Settings:
-            message = '''Settings.set_new_value takes Settings
-                         argument type({}) = {} were given
-                      '''.replace("\n", "")
-            raise TypeError(message.format(new_settings, type(new_settings)))
-        self = new_settings
-    """
 
     
 
@@ -272,3 +242,5 @@ r"""
 #s.save_to_file(filepath)
 #t = Settings(filepath=filepath)
 #print(str(t)) """
+
+        
