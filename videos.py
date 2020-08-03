@@ -21,12 +21,12 @@ Idea:
     video = ... # creating video  #  Use 'HglSFYJDDE' for search
 
     # 2)
-    stream = VideoStream(video)
+    stream = VideoStream(video, width, height)
     
     # 3) Set the user's current viewing time frequently.
     stream.set_users_cur_viewing_time(t)   # often  2)
     
-    # 4) When you need get next n seconds.
+    # 4) When you need get next n seconds of result video.
     stream.save_n_seconds(start_time, n, outputname):
     # in file named output_name_withonut_extension.mp4 yours video part
     # in file named output_name_withonut_extension.mp3 yours audio part
@@ -67,7 +67,7 @@ horror = VideoFromYoutubeURL("qiZLHchtX8c")
 # you can cut a part from video using
 horror_11s = horror[239:250]
 # it is the same
-horror_11s = PartOfVideo(horror, 239, 250)
+# horror_11s = PartOfVideo(horror, 239, 250)
 
 
 # You can set **kwargs that in Settings:
@@ -76,8 +76,8 @@ horror_11s = PartOfVideo(horror, 239, 250)
 rev9_8s = VideoFromYoutubeURL("2WemzwuAQF4")[56: 64](speed=0.9, volume=1.2)
 rev9_3s = VideoFromYoutubeURL("2WemzwuAQF4")[66: 69](speed=0.9, volume=1.2)
 # it is the same
-rev9_3s = SmartAcceleratedVideo(VideoFromYoutubeURL("2WemzwuAQF4")[66: 69],
-                                Settings(speed=0.9, volume=1.2))
+# rev9_3s = SmartAcceleratedVideo(VideoFromYoutubeURL("2WemzwuAQF4")[66: 69],
+#                                 Settings(speed=0.9, volume=1.2))
 
 # You can contencate videos.   #  Use '0kxprGdgk8' for search
 rev9_11s = rev9_8s + rev9_3s  # in "2WemzwuAQF4" will skipped 64-66
@@ -88,7 +88,7 @@ rev9_11s = rev9_8s + rev9_3s  # in "2WemzwuAQF4" will skipped 64-66
                     # video        audio
 sep_video_an_audio = rev9_11s / horror_11s
 # it is the same
-rev9_11s = SeparatedVideoAndAudio(rev9_11s, horror_11s)
+# rev9_11s = SeparatedVideoAndAudio(rev9_11s, horror_11s)
 
 
 # VideoFromImageURL exmple    #  Use 'fjR1wW8o9d' for search
@@ -101,9 +101,7 @@ image_with_sound_10s = image_10s / VideoFromYoutubeURL("7oEdx9IgPpo")[0: 10]
 
 # VideoFromText exmple    #  Use '55FPkUD5WO' for search
 text_8s = "Any text"
-text_8s = VideoFromText(image_url, 10)  #without sounds
-# you can set any kwargs, duration will be divided by speeding
-text_8s = VideoFromText("Any Text", 8, inverted=True)
+text_8s = VideoFromText("Any Text", 10)  #without sounds
 
 #you can add sound using
 text_with_sound_8s = text_8s / VideoFromYoutubeURL("7oEdx9IgPpo")[10: 18]
@@ -154,8 +152,8 @@ from moviepy.audio.AudioClip import AudioArrayClip
 from cv2 import VideoWriter
 from settings import Settings
 from pafy import new as pafy_new
-from functions import (in_new_thread, print_time, get_stream_url,
-                       str_to_error_message, squeeze_sound)
+from functions import (in_new_thread, str_to_error_message, get_stream_url,
+                       print_time, squeeze_sound, image_to_new_size)
 from filedict import FileDict
 import numpy as np
 from bisect import bisect_right
@@ -260,7 +258,9 @@ class Video:    #  Use 'POFvmLHWHg' for search
     def set_users_cur_viewing_time(self, *args, **kwargs):
         """                               #  Use 'y9bdkYqolQ' for search
         Overloaded 'get_frame' method must takes time in arg.
-        This function 
+        self.set_users_cur_viewing_time(t) will called in before
+        self.get_frame(t) and when user change viewing time.
+        Be ready to be called by self.get_frame(t) function.
         """
         msg = '''All classes inherited of {} should overload '{}' method'''
         Warning(msg.format(__class__, "set_users_cur_viewing_time"))
@@ -658,13 +658,14 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
         # save sound of video[start_time: end_time] in outputname + ".mp3"
         
     """
-    def __init__(self, video):
+    def __init__(self, video, width, height):
         if not isinstance(video, Video):
             msg = '''VideoStream.__init__  argument must be inherit of
                      Video, type({}) = {} were given'''
             raise TypeError(msg.format(video, type(video)))
 
         self.video = video
+        self.w, self.h = width, height
         self.set_users_cur_viewing_time(0)
 
     def set_users_cur_viewing_time(self, time):
@@ -673,11 +674,6 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
     @print_time
     def _save_part(self, start_time, outputname,
                    condition="cur_time < end_time"):
-        """
-        Save video[start_time: end_time] in outputname:
-            In outputname.mp4 save frames of video
-            In outputname.mp3
-        """
         def check_type(part):
             nessery_keys = ['sound', 'end time']
             if not isinstance(part, dict):
@@ -690,9 +686,11 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
                           {} were given'''.format(key, part)
                     raise TypeError(str_to_error_message(msg))
             return True
-        
-        sound, frames = [], []
-        sound_len = 0
+
+        videoname, audioname = outputname + ".mp4", outputname + ".mp3"
+        videowriter = VideoWriter(videoname, -1, VIDEO_FPS, (self.h, self.w))
+        sound = []
+        sound_len, frames_len = 0, 0
         cur_time = start_time
         while eval(condition):
             # time.sleep(0.01)
@@ -701,8 +699,11 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
 
             sound.append(part['sound'])
             sound_len += len(sound[-1])
-            while sound_len / AUDIO_FPS > len(frames) / VIDEO_FPS:
-                frames.append(self.video.get_frame(cur_time))
+            while sound_len / AUDIO_FPS > frames_len / VIDEO_FPS:
+                frames_len += 1
+                frame = self.video.get_frame(cur_time)
+                image = image_to_new_size(frame, self.w, self.h)
+                videowriter.write(image[:, :, ::-1])
 
             cur_time = part['end time']
             try:
@@ -711,28 +712,21 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
                 pass
                 #print("cur time:", cur_time)
                 #raise e
+        
+        videowriter.release()
         sound = np.vstack(sound)
-        save(frames, sound, outputname)
-        return
+        AudioArrayClip(sound, AUDIO_FPS).write_audiofile(audioname)             
 
     def save_part(self, start_time, end_time, outputname):
+        """
+        Save video[start_time: end_time] in outputname:
+            In outputname.mp4 save frames of video
+            In outputname.mp3
+        """
         self._save_part(start_time, outputname, "cur_time < "+ str(end_time))
 
     def save_n_seconds(self, start_time, n, outputname):
         self._save_part(start_time, outputname, "sound_len < AUDIO_FPS * " + str(n))
-
-
-def save(video_frames, audio_ndarray, name):
-    w, h = video_frames[0].shape[0], video_frames[0].shape[1]
-    out_name = "{}.mp4".format(name)
-    out = VideoWriter(out_name, -1, VIDEO_FPS, (h, w))
-    # print("fps:", VIDEO_FPS, "len(video_frames)", len(video_frames), end = " ")
-    for frame in video_frames:
-        if frame.shape[:2] != (w, h):
-            print(frame.shape, (w, h))
-        out.write(frame[:, :, ::-1])
-    out.release()
-    AudioArrayClip(audio_ndarray, AUDIO_FPS).write_audiofile(name + ".mp3")             
 
 
 #"""
@@ -776,7 +770,7 @@ def main2(i):
                         quiet_speed = 6)
     sva = video(settings)
 
-    stream = VideoSaveStream(sva)
+    stream = VideoSaveStream(sva, 1000, 1000)
     stream.save_n_seconds(0, 10, "sva_output0-30")
     
 # print(time.time() - t)
