@@ -2,6 +2,7 @@ from moviepy.editor import VideoFileClip
 from pafy import new as pafy_new
 from filedict import FileDict
 import numpy as np
+from PIL import Image
 
 url = 'http://youtube.com/watch?v=iwGFalTRHDA'
 
@@ -26,12 +27,15 @@ def print_time(func):
     def wrapper(*args, **kwargs):
         from time import time
         start_time = time()
-        func(*args, **kwargs)
+        rt = func(*args, **kwargs)
         end_time = time()
         
         msg = "function {} (args = {}, kwargs = {}) takes {} seconds"
+        # print("time", end_time - start_time)
         print(msg.format(func.__name__, args, kwargs, end_time - start_time))
-    wrapper.__name__ = "in_new_thread({}).wrapper".format(func.__name__)
+        return rt
+    #print("func", func, "func")
+    wrapper.__name__ = "print_time({}).wrapper".format(func.__name__)
     return wrapper
 
 
@@ -47,41 +51,22 @@ def squeeze_sound(sound, x=1):
     sound_slice = np.arange(0, sound.shape[0] - 0.5, x).astype(int)
     return sound[sound_slice]
 
+# @print_time
 def image_to_new_size(image, new_w, new_h):
     image_h, image_w = image.shape[0], image.shape[1]
-
+    if (image_h, image_w) == (new_w, new_h):
+        return image
     k = max(image_w / new_w, image_h / new_h)
-    h_slice = np.arange(0, image.shape[0] - 0.5, k).astype(int)
-    w_slice = np.arange(0, image.shape[1] - 0.5, k).astype(int)
-    image = image[:, w_slice, :][h_slice, :, :]
-    # print(image.shape)
+    if k != 1:
+        image = Image.fromarray(image, "RGB")
+        image = image.resize((int(image_w / k), int(image_h/k)))
+        image = np.array(image)
+
     image_h, image_w = image.shape[0], image.shape[1]
+    black = np.zeros((new_h, new_w, 3), dtype=image.dtype)
     
-    black = np.zeros((new_h, new_w, 3)).astype(image.dtype)
     x_left, y_up = (new_w - image_w) // 2, (new_h - image_h) // 2
     black[y_up: y_up + image_h, x_left: x_left + image_w, :] = image
+
     return black
 
-r"""
-a = np.array([2, 1, 0, -1, -2, -1, 0, 1, 2, 1])
-print(squeeze_sound(a, 1.75))
-from PIL import Image
-
-show = lambda image: Image.fromarray(image, 'RGB').show()
-
-im = Image.open(r"C:\Users\m\Pictures\original.jpg")
-ndarr = np.array(im)
-rt = image_to_new_size(ndarr, 500, 500) # [170: 853][:1024][:]
-# print('all', (ndarr == rt).all())
-# print(ndarr, rt)
-# show(ndarr)
-show(rt)
-#print(np.ones((1, 3)) == 1) """
-"""
-@in_new_thread
-def my_print(a):
-    for i in range(100):
-        print("thread {} print {}\n".format(a, i), end = "")
-
-for i in range(10):
-    my_print(i)"""

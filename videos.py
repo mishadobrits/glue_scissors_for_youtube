@@ -23,10 +23,7 @@ Idea:
     # 2)
     stream = VideoStream(video, width, height)
     
-    # 3) Set the user's current viewing time frequently.
-    stream.set_users_cur_viewing_time(t)   # often  2)
-    
-    # 4) When you need get next n seconds of result video.
+    # 3) When you need get next n seconds of result video.
     stream.save_n_seconds(start_time, n, outputname):
     # in file named output_name_withonut_extension.mp4 yours video part
     # in file named output_name_withonut_extension.mp3 yours audio part
@@ -37,7 +34,7 @@ Idea:
     # save frames of video[start_time: end_time] in outputname + ".mp4"
     # save sound of video[start_time: end_time] in outputname + ".mp3"
     
-    #<!!!>You can send it to your server or do with it whatever you want</!!!>
+    <!!!>You can send it to your server or do with it whatever you want</!!!>
 
 
 
@@ -175,15 +172,13 @@ class Video:    #  Use 'POFvmLHWHg' for search
         v1 + v2 = SumOfVideo((v1, v2))
         v1 / v2 = SeparatedVideoAndAudio(video=v1, audio=v2).
     
-    All classes inherid of <class Video>
-        must overload
-            'get_nextsound(time)' method #  Use 'mrQvXrhkKg' for search
-            'get_frame(time)'     method #  Use '0t1SPHSW8B' for search
-            'get_duration(time)'         #  Use 'Ani5kkF30f' for search
-                If you want to use SumOfVideo of your type
-                (if you use SumOfVideo(your_type[start:end]) you don't need
-                overload it becouse PartOfVideo have own 'get_duration' method.)
-        should overload 'set_users_cur_viewing_time(time)' method.
+    All classes inherid of <class Video> must overload
+        'get_nextsound(time)' method #  Use 'mrQvXrhkKg' for search
+        'get_frame(time)'     method #  Use '0t1SPHSW8B' for search
+        'get_duration(time)'         #  Use 'Ani5kkF30f' for search
+            If you want to use SumOfVideo of your type
+            !!! if you use SumOfVideo(your_type[start:end]) you don't need
+            overload it becouse PartOfVideo have own 'get_duration' method.
     
     """
     def __add__(self, other):
@@ -254,16 +249,6 @@ class Video:    #  Use 'POFvmLHWHg' for search
                  #  Use '0t1SPHSW8B' for search'''
         msg = str_to_error_message(msg.fotmat(__class__, "get_frame"))
         raise Exception(msg)
-    
-    def set_users_cur_viewing_time(self, *args, **kwargs):
-        """                               #  Use 'y9bdkYqolQ' for search
-        Overloaded 'get_frame' method must takes time in arg.
-        self.set_users_cur_viewing_time(t) will called in before
-        self.get_frame(t) and when user change viewing time.
-        Be ready to be called by self.get_frame(t) function.
-        """
-        msg = '''All classes inherited of {} should overload '{}' method'''
-        Warning(msg.format(__class__, "set_users_cur_viewing_time"))
 
     def get_duration(self):       #  Use 'Ani5kkF30f' for search
         """
@@ -321,8 +306,14 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
         self.is_downloaded = False
         self.start_downloading = False
         
-    @print_time
-    def _start_downloading_webm(self):
+    # @print_time
+    def download_webm(self):
+        """
+        This function uploading video (after this function video will load).
+        If video has already uploaded this funtion does nothing.
+        """
+        if self.is_downloaded:
+            return
         if self.start_downloading and not self.is_downloaded:
             import time
             while not self.is_downloaded:
@@ -330,46 +321,47 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
             return
                 
         self.start_downloading = True
+        # loading
         n = 10
         for i in range(n):
             try:
-                 super().__init__(get_stream_url(self.video_id))
-                 break
+                link = r"https://www.youtube.com/watch?v=" + self.video_id
+                super().__init__(get_stream_url(link))
+                break
             except OSError as e:
                 if i == n - 1:
                     raise e
-            print("try {}: failed".format(i))
+            print("attemp {}: failed. Start {} attemp".format(i, i + 1))
+        if i:
+            print("Video sucsessfuly uploaded in {} attemps".format(i))
 
         self.audio = self.audio.set_fps(AUDIO_FPS)
         self.is_downloaded = True
         self.start_downloading = False
-        
 
-    def _get_downloaded_status(self):
-        """
-        This function
-            if video sucssefully downloaded return "downloaded"
-            if downloading starts and not finished return "now downloading"
-            if downloading don't start return "downloading don't started"
-        """
-        if self.is_downloaded:
-            return "downloaded"
-        elif self.start_downloading:
-            return "now downloading"
-        else:
-            return "downloading don't started"
+    def _download_webm_decorator(func):
+        def wrapper(self, *args, **kwargs):
+            self.download_webm()
+            return func(self, *args, **kwargs)
+        return wrapper
 
+    @_download_webm_decorator
     def get_frame(self, t):
-        if self._get_downloaded_status() == "downloading don't started":
+        t = self.get_frame_time(t)
+        """if self._get_downloaded_status() == "downloading don't started":
             self._start_downloading_webm()
         elif self._get_downloaded_status() == "now downloading":
             import time
             while self._get_downloaded_status != "downloaded":
-                time.sleep(0.01)
-        return super().get_frame(t)
+                time.sleep(0.01)"""
+        return super().get_frame(t) 
 
+    def get_frame_time(self, time):
+        return time - time % (1 / VIDEO_FPS)
+
+    @_download_webm_decorator
     def get_nextsound(self, time):     
-        end_time = time + 1 / self.fps
+        end_time = time + 1 / VIDEO_FPS
         self.last_asked_time = end_time
         
         part = {}
@@ -390,9 +382,6 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
                 raise AttributeError(str(e) + msg)
 
         return self.duration
-    
-    def set_users_cur_viewing_time(self, time):
-        self.get_frame(time)
 
 
 class PartOfVideo(Video):             #  Use '1U9YldMWW2' for search
@@ -405,7 +394,7 @@ class PartOfVideo(Video):             #  Use '1U9YldMWW2' for search
         methods takes into time range
     PartOfVideo have own get_duration() method so if you use
     SumOfVideo(video1[start1:end1], video2[start1:end1]) video1 and video2
-    don't have to overload get_duration
+    don't have to overload get_duration method
     """
     
     def __init__(self, video, start_time, end_time):
@@ -422,10 +411,6 @@ class PartOfVideo(Video):             #  Use '1U9YldMWW2' for search
     def get_frame(self, time):
         return self.video.get_frame(time + self.start_time)
 
-    @Video.check_time_decorator
-    def set_users_cur_viewing_time(self, time):
-        self.video.set_users_cur_viewing_time(time + self.start_time)
-
     def get_duration(self):
         return self.end_time - self.start_time
 
@@ -433,7 +418,7 @@ class PartOfVideo(Video):             #  Use '1U9YldMWW2' for search
 class SmartAcceleratedVideo(Video):   #  Use '89FAQvklsC' for search
     """
     Video that plays the silent and loud parts at different speeds.
-    Look settings for info about options
+    Look <class Settings> for info about options
     """
     def __init__(self, video, settings):
         self.video = video
@@ -475,9 +460,6 @@ class SmartAcceleratedVideo(Video):   #  Use '89FAQvklsC' for search
         if self.settings.get_inverted():
             im = im[::-1]
         return im
-
-    def set_users_cur_viewing_time(self, time):
-        self.video.set_users_cur_viewing_time(time)
     
     def get_duration(self):
         return self.video.get_duration()
@@ -496,18 +478,15 @@ class VideoFromImage(Video):          #  Use 'hDygGaJlAH' for search
     @Video.check_time_decorator
     def get_nextsound(self, t):
         part = {}
-        part['end time'] = t + 1 / VIDEO_FPS
-        sound = np.zeros(self.sound_channels * (AUDIO_FPS // VIDEO_FPS))
-        part['sound'] = sound.reshape(-1, self.sound_channels)
+        part['end time'] = t + self.get_duration()
+        
+        sound = np.zeros(self.get_duration() * AUDIO_FPS * self.sound_channels)
+        part['sound'] = sound.reshape((-1, self.sound_channels))
         return part
     
     @Video.check_time_decorator
     def get_frame(self, t):
         return self.image
-
-    @Video.check_time_decorator
-    def set_users_cur_viewing_time(self, time):
-        pass
     
     def get_duration(self):
         return self.duration
@@ -548,7 +527,7 @@ class SumOfVideo(Video):              #  Use 'Ci1lua3fAb' for search
         for elem in self.videos_list[:-1]:
             self.start_times.append(self.start_times[-1] + elem.get_duration())
         self.is_downloaded = [False] * len(videos_list)
-        print(self.durations)
+        # print(self.durations)
 
 
     @Video.check_time_decorator
@@ -557,23 +536,22 @@ class SumOfVideo(Video):              #  Use 'Ci1lua3fAb' for search
         time_in_video = time - self.start_times[index]
         return index, time_in_video
 
-    @Video.check_time_decorator
-    def set_users_cur_viewing_time(self, time):
-        def set_time(self, index, video_time):
+    def set_users_cur_viewing_time(self, index, video_time):
+        def load_video(self, index):
             self.is_video_load[index] = True
-            self.videos_list[index].set_users_cur_viewing_time(video_time)
-        index, video_time = self._get_index_and_time(time)
-        set_time(self, index, video_time)
+            self.videos_list[index].get_frame(0)
+        # set_time(self, index, video_time)
         for index1 in range(index + 1, len(self.videos_list)):
-            if self.start_times[index1] < time + SumOfVideo.PRELOAD and \
+            if self.start_times[index1] < video_time + SumOfVideo.PRELOAD and \
                        not self.is_video_load[index1]:
-                in_new_thread(lambda : set_time(self, index1, 0))()
+                in_new_thread(lambda : load_video(self, index1))()
             else:
                 break
     
     @Video.check_time_decorator
     def get_frame(self, time):
         index, video_time = self._get_index_and_time(time)
+        self.set_users_cur_viewing_time(index, video_time)
         # print(index, video_time)
         return self.videos_list[index].get_frame(video_time)
 
@@ -618,12 +596,6 @@ class SeparatedVideoAndAudio(Video):  #  Use '0uceFGY5J0' for search
         time = min(time, self.frames_video_duration)
         return self.frames_video.get_frame(time)
 
-    @Video.check_time_decorator
-    def set_users_cur_viewing_time(self, time):
-        frames_video_time = min(time, self.frames_video_duration)
-        self.frames_video.set_users_cur_viewing_time(frames_video_time)
-        self.sound_video.set_users_cur_viewing_time(time)
-
     def get_duration(self):
         return self.sound_video.get_duration()
 
@@ -632,7 +604,7 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
     """
     VideoSaveStream - Stream for saving video.
     Syntaxis:
-        stream = VideoSaveStream(video):
+        stream = VideoSaveStream(video, width, height)
         
         # for saving next n seconds
         stream.save_next(seconds, outputname)
@@ -642,10 +614,6 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
 
     Public methods:  (all methods return nothing)
         __init__(video):
-
-        set_users_cur_viewing_time(time):
-        # you need call it when user set his time
-
 
         save_n_seconds(start_time, n, outputname):
         # save frames of next n seconds in outputname + ".mp4"
@@ -658,18 +626,17 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
         # save sound of video[start_time: end_time] in outputname + ".mp3"
         
     """
-    def __init__(self, video, width, height):
+    def __init__(self, video, width=-1, height=-1):
         if not isinstance(video, Video):
             msg = '''VideoStream.__init__  argument must be inherit of
                      Video, type({}) = {} were given'''
             raise TypeError(msg.format(video, type(video)))
 
         self.video = video
-        self.w, self.h = width, height
-        self.set_users_cur_viewing_time(0)
-
-    def set_users_cur_viewing_time(self, time):
-        self.video.set_users_cur_viewing_time(time)
+        frame = self.video.get_frame(0)  # loading
+        self.w = width if width != -1 else frame.shape[1]
+        self.h = height if height != -1 else frame.shape[0]
+        self.video.get_nextsound(0)
 
     @print_time
     def _save_part(self, start_time, outputname,
@@ -688,10 +655,12 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
             return True
 
         videoname, audioname = outputname + ".mp4", outputname + ".mp3"
-        videowriter = VideoWriter(videoname, -1, VIDEO_FPS, (self.h, self.w))
+        videowriter = VideoWriter(videoname, -1, VIDEO_FPS, (self.w, self.h))
         sound = []
         sound_len, frames_len = 0, 0
         cur_time = start_time
+        cur_frame = self.video.get_frame(cur_time)
+        rt = 0
         while eval(condition):
             # time.sleep(0.01)
             part = self.video.get_nextsound(cur_time)
@@ -699,23 +668,18 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
 
             sound.append(part['sound'])
             sound_len += len(sound[-1])
+            if sound_len / AUDIO_FPS > frames_len / VIDEO_FPS:
+                cur_frame = image_to_new_size(cur_frame, self.w, self.h)
+                cur_frame = cur_frame[:, :, ::-1]
             while sound_len / AUDIO_FPS > frames_len / VIDEO_FPS:
                 frames_len += 1
-                frame = self.video.get_frame(cur_time)
-                image = image_to_new_size(frame, self.w, self.h)
-                videowriter.write(image[:, :, ::-1])
-
+                videowriter.write(cur_frame)
             cur_time = part['end time']
-            try:
-                self.set_users_cur_viewing_time(cur_time)
-            except OSError:
-                pass
-                #print("cur time:", cur_time)
-                #raise e
-        
+            cur_frame = self.video.get_frame(cur_time)
+            # print(cur_time)
         videowriter.release()
         sound = np.vstack(sound)
-        AudioArrayClip(sound, AUDIO_FPS).write_audiofile(audioname)             
+        AudioArrayClip(sound, AUDIO_FPS).write_audiofile(audioname, logger=None)             
 
     def save_part(self, start_time, end_time, outputname):
         """
@@ -728,9 +692,19 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
     def save_n_seconds(self, start_time, n, outputname):
         self._save_part(start_time, outputname, "sound_len < AUDIO_FPS * " + str(n))
 
-
+import time
+#t = time.time()
+at, cur_time = [0] * 20, time.time()
+def print_time(i):
+    global at, cur_time
+    # print(time.time() - t, i)
+    #if i == 1:
+    #    print(at, bt, time.time())
+    at[i] += time.time() - cur_time
+    cur_time = time.time()
+    
 #"""
-def main(i):    
+def main0(i):    
     rev9_url = r"https://www.youtube.com/watch?v=2WemzwuAQF4" #t=56s"
     rev9_8s = VideoFromYoutubeURL(rev9_url)[56: 64]
     rev9_3s = VideoFromYoutubeURL(rev9_url)[66: 69]
@@ -740,13 +714,11 @@ def main(i):
 
     # print(dir(rev9_8s))
     video = (rev9_8s + rev9_3s) / horror_11s
-
     stream = VideoSaveStream(video)
-    stream.set_users_cur_viewing_time(0)
     #import time
     #t = time.time()
-    stream.save_next(5, "outname0-5")
-    stream.save_next(5, "outname5-10")
+    stream.save_part(0, 5, "outname0-5")
+    stream.save_part(0, 5, "outname5-10")
     print("---------------------------------" + str(i))
     #print(time.time() - t)
 
@@ -758,8 +730,8 @@ def main1(i):
     im_urls += [r"https://mirpokrytij.ru/upload/iblock/83c/83c06d6848db17f5068a79f2cbc38ab1.jpg"]
 
     video = SumOfVideo([VideoFromImageURL(elem, 2) for elem in im_urls])
-    stream = VideoSaveStream(video)
-    stream.save_next(8, "cities")
+    stream = VideoSaveStream(video, 1700, 1000)
+    stream.save_part(0, 8, "cities")
     
 def main2(i):
     video_id = "V1sRabJhGWs"
@@ -769,9 +741,9 @@ def main2(i):
                         sound_threshold = 0.2,
                         quiet_speed = 6)
     sva = video(settings)
-
-    stream = VideoSaveStream(sva, 1000, 1000)
-    stream.save_n_seconds(0, 10, "sva_output0-30")
+    w, h = video.get_frame(0).shape[1], video.get_frame(0).shape[0]
+    stream = VideoSaveStream(sva, w, h + 100)
+    stream.save_n_seconds(0, 30, "sva_output0-30")
     
 # print(time.time() - t)
 #for _ in range(100):
