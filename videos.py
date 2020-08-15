@@ -280,22 +280,22 @@ class Video:    #  Use 'POFvmLHWHg' for search
     def check_time_decorator(func):
         def wrapper(self, time):
             if time > self.get_duration():
-                err = '''you ask about {} but {}.get_duration() is {}'''
-                raise OSError(err.format(time, self, self.get_duration()))
+                err = f'''you ask about {time} but
+                          {self.short_str()}.get_duration() is
+                          {self.get_duration()}'''
+                raise OSError(str_to_error_message(err.format))
             return func(self, time)
         return wrapper
     
-    def deepcopy_video_decorator(indexes_of_copied_arg=(1,)):
-        def decorator(func):
-            # print(func, indexes_of_copied_arg)
-            def wrapper(self, *args, **kwargs):
-               import copy
-               args = list(args)
-               for index in indexes_of_copied_arg:
-                   args[index] = copy.deepcopy(args[index])
-               return func(self, *args, **kwargs)
-            return wrapper
-        return decorator
+    def deepcopy_video_decorator(func):
+        def wrapper(self, *args, **kwargs):
+            import copy
+            args = list(args)
+            for i, elem in enumerate(args):
+                if isinstance(elem, Video):
+                    args[i] = copy.deepcopy(elem)
+            return func(self, *args, **kwargs)
+        return wrapper
 
 
 class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for search
@@ -411,9 +411,12 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
     def short_str(self):
         return str(self)
         
-    def __str__(self):
-        msg = f'''{__class__.__name__}({self.video_id})'''
+    def long_str(self):
+        msg = f'''{__class__.__name__}('{self.video_id}')'''
         return msg
+
+    def __str__(self):
+        return self.long_str()
 
 
 class VideoFromImage(Video):          #  Use 'hDygGaJlAH' for search
@@ -445,10 +448,13 @@ class VideoFromImage(Video):          #  Use 'hDygGaJlAH' for search
     def short_str(self):
         return str(self)
         
-    def __str__(self):
+    def long_str(self):
         msg = f'''{__class__.__name__}({self.image}, {self.duration},
                   sound_channels={self.sound_channels})'''
         return msg
+
+    def __str__(self):
+        return self.long_str()
 
 
 class VideoFromText(VideoFromImage):       #  Use 'Pv1U9ovsOb' for search
@@ -478,7 +484,7 @@ class VideoFromImageURL(VideoFromImage):   #  Use 'f5vfFwOTVd' for search
     def short_str(self):
         return str(self)
         
-    def __str__(self):
+    def long_str(self):
         msg = f'''{__class__.__name__}({self.image_link}, {self.duration},
                   sound_channels={self.sound_channels})'''
         return msg
@@ -493,8 +499,11 @@ class VideoFromFrameFromYoutubeVideo(VideoFromImage):
     def short_str(self):
         return f"{__class__.__name__}({self.video.short_str()}, {self.time})"
         
-    def __str__(self):
+    def long_str(self):
         return f"{__class__.__name__}({self.video}, {self.time})"
+
+    def __str__(self):
+        return self.long_str()
 
 
 class PartOfVideo(Video):             #  Use '1U9YldMWW2' for search
@@ -509,7 +518,7 @@ class PartOfVideo(Video):             #  Use '1U9YldMWW2' for search
     SumOfVideo(video1[start1:end1], video2[start1:end1]) video1 and video2
     don't have to overload get_duration method
     """
-    @Video.deepcopy_video_decorator()
+    @Video.deepcopy_video_decorator
     def __init__(self, video, start_time, end_time):
         self.video = video
         self.start_time = start_time if start_time else 0
@@ -531,10 +540,14 @@ class PartOfVideo(Video):             #  Use '1U9YldMWW2' for search
     def short_str(self):
         return f"{self.video.short_str()}[{self.start_time}:{self.end_time}]"
         
-    def __str__(self):
+        # set_time(self, index, video_time)
+    def long_str(self):
         rt = f'''{__class__.__name__}({self.video},
                  {self.start_time}, {self.end_time})'''
         return str_to_error_message(rt)
+
+    def __str__(self):
+        return self.long_str()
 
 
 class SumOfVideo(Video):              #  Use 'Ci1lua3fAb' for search
@@ -613,13 +626,16 @@ class SumOfVideo(Video):              #  Use 'Ci1lua3fAb' for search
                  self.videos_list], need_copy=False)'''
         return str_to_error_message(rt)
         
-    def __str__(self, short=False):
+    def long_str(self, short=False):
         rt = f"{__class__.__name__}"
         rt += "[" + ", ".join([str(v) for v in self.videos_list]) + "]"
         if not self.need_copy:
             rt = ", need_copy=False"
         return rt + ")"
     
+    def __str__(self):
+        return self.long_str()
+
 
 class PartsOfOneVideo(SumOfVideo):        #  Use 'GnJ70Y0u1v' for search
     """
@@ -627,11 +643,11 @@ class PartsOfOneVideo(SumOfVideo):        #  Use 'GnJ70Y0u1v' for search
     parts = PartsOfOneVideo(video, ((start0, end0), (start1, end1), ... ))
     parts = video[start0:end0, start1:end1, ...]
     # It is the same
-    import copy
-    parts = video[start0:end0] + video[start0:end0] + video[start0:end0]...
-    # But first way don't loading video again ad again
+    parts = video[start0:end0] + video[start1:end1] + video[start2:end2]...
+    # But the second way, loads the video again and again.
+    # The first one loads only twice
     """
-    Video.deepcopy_video_decorator()
+    Video.deepcopy_video_decorator
     def __init__(self, video, slices_list):
         self.video, self.slices_list = video, slices_list
         import copy
@@ -648,8 +664,11 @@ class PartsOfOneVideo(SumOfVideo):        #  Use 'GnJ70Y0u1v' for search
         rt += ", ".join([f"{sl.start}: {sl.stop}" for sl in self.slices_list])
         return rt + "]"
     
-    def __str__(self):
+    def long_str(self):
         return f"{self.video}{str(self.slices_list)}"
+
+    def __str__(self):
+        return self.long_str()
 
                                            
 class SeparatedVideoAndAudio(Video):  #  Use '0uceFGY5J0' for search
@@ -661,7 +680,7 @@ class SeparatedVideoAndAudio(Video):  #  Use '0uceFGY5J0' for search
     If frames_video and sound_video have different duration, frames
     Video will be add with last frame of frames_video to sound_video.duration()
     """
-    Video.deepcopy_video_decorator((1, 2))
+    Video.deepcopy_video_decorator
     def __init__(self, frames_video, sound_video):
         self.frames_video = frames_video
         self.frames_video_duration = self.frames_video.get_duration()
@@ -683,8 +702,11 @@ class SeparatedVideoAndAudio(Video):  #  Use '0uceFGY5J0' for search
     def short_str(self):
         return f"{self.frames_video.short_str()}/ {self.sound_video.short_str()}"
     
-    def __str__(self):
+    def long_str(self):
         return f"{__class__.__name__}({self.frames_video}, {self.sound_video})"
+
+    def __str__(self):
+        return self.long_str()
 
 
 class SmartAcceleratedVideo(Video):   #  Use '89FAQvklsC' for search
@@ -692,12 +714,16 @@ class SmartAcceleratedVideo(Video):   #  Use '89FAQvklsC' for search
     Video that plays the silent and loud parts at different speeds.
     Look <class Settings> for info about options
     """
-    @Video.deepcopy_video_decorator()
+    @Video.deepcopy_video_decorator
     def __init__(self, video, settings):
         self.video = video
         self.settings = settings
         self.last_loud_time = 0
-
+        """
+        if settings.is_trivial():
+            self = video
+            print(type(self), type(video))"""
+    
     def get_nextsound(self, time):
         s = self.settings
         
@@ -740,10 +766,13 @@ class SmartAcceleratedVideo(Video):   #  Use '89FAQvklsC' for search
         return self.video.get_duration()
     
     def short_str(self):
-        return f"{self.video.short_str()}({self.settings.to_dict()})"
+        return f"{self.video.short_str()}{str(self.settings)[8:]}"
+
+    def long_str(self):
+        return f"{__class__.__name__}({self.video}, {self.settings})"
 
     def __str__(self):
-        return f"{__class__.__name__}({self.video}, {self.settings})"
+        return self.long_str()
 
 
 class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
@@ -799,8 +828,14 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
                     raise TypeError(str_to_error_message(msg))
             return True
 
-        videoname, audioname = outputname + ".mp4", outputname + ".mp3"
-        videowriter = VideoWriter(videoname, -1, VIDEO_FPS, (self.w, self.h))
+        class FakeVideoWriter:
+            def release(self):
+                pass
+
+        vnames, outfile_counter = [], -1
+        videowriter = FakeVideoWriter()
+        last_shape = (-1, -1, 3)
+        
         sound = []
         sound_len, frames_len = 0, 0
         cur_time = start_time
@@ -814,33 +849,48 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
             sound.append(part['sound'])
             sound_len += len(sound[-1])
             if sound_len / AUDIO_FPS > frames_len / VIDEO_FPS:
-                cur_frame = image_to_new_size(cur_frame, self.w, self.h)
+                # cur_frame = image_to_new_size(cur_frame, self.w, self.h)
                 cur_frame = cur_frame[:, :, ::-1]
             while sound_len / AUDIO_FPS > frames_len / VIDEO_FPS:
+                if cur_frame.shape != last_shape:
+                    outfile_counter += 1
+                    videowriter.release()
+                    vnames += [outputname + str(outfile_counter) + ".mp4"]
+                    videowriter = VideoWriter(vnames[-1], -1, VIDEO_FPS,
+                                              cur_frame.shape[1::-1])
                 frames_len += 1
                 videowriter.write(cur_frame)
+                last_shape = cur_frame.shape
             cur_time = part['end time']
             cur_frame = self.video.get_frame(cur_time)
         videowriter.release()
         sound = np.vstack(sound)
-        AudioArrayClip(sound, AUDIO_FPS).write_audiofile(audioname, logger=None)             
-
+        
+        audioname = outputname + ".mp3"
+        AudioArrayClip(sound, AUDIO_FPS).write_audiofile(audioname, logger=None)
+        return vnames
+    
     def save_part(self, start_time, end_time, outputname):
         """
         Save video[start_time: end_time] in outputname:
             In outputname.mp4 save frames of video
             In outputname.mp3
         """
-        self._save_part(start_time, outputname, "cur_time < "+ str(end_time))
-
+        rt = self._save_part(start_time, outputname, "cur_time < "+ str(end_time))
+        return rt
+    
     def save_n_seconds(self, start_time, n, outputname):
-        self._save_part(start_time, outputname, "sound_len < AUDIO_FPS * " + str(n))
-
+        rt = self._save_part(start_time, outputname, "sound_len < AUDIO_FPS * " + str(n))
+        return rt
+    
     def short_str(self):
         return f"{__class__.__name__}({self.video.short_str()})"
     
-    def __str__(self):
+    def long_str(self):
         return f"{__class__.__name__}({self.video})"
+
+    def __str__(self):
+        return self.long_str()
 
 
 import time
@@ -865,13 +915,13 @@ def main0(i):
 
     # print(dir(rev9_8s))
     video = (rev9_8s + rev9_3s) / horror_11s
-    stream = VideoSaveStream(video)
+    stream = VideoSaveStream(video[::1])
     #import time
     #t = time.time()
-    stream.save_part(0, 5, "outname0-5")
-    stream.save_part(0, 5, "outname5-10")
     print(str(stream))
     print(stream.short_str())
+    stream.save_part(0, 5, "outname0-5")
+    stream.save_part(0, 5, "outname5-10")
     print("---------------------------------" + str(i))
     #print(time.time() - t)
 
@@ -884,7 +934,7 @@ def main1(i):
 
     video = SumOfVideo([VideoFromImageURL(elem, 2) for elem in im_urls])
     stream = VideoSaveStream(video[::0.66], 1700, 1000)
-    stream.save_n_seconds(0, 12, "cities")
+    print(stream.save_n_seconds(0, 12, "cities"))
     # print(str(stream))
     print(str(stream))
     print(stream.short_str())
@@ -912,6 +962,7 @@ def main3(i):
     stream.save_part(0, 5, "rev9#0_5")
     stream.save_part(5, 10, "rev9#5_10") 
 
-# print(time.time() - t)
-# for _ in range(100):
-main3(0)
+
+s = """VideoFromYoutubeURL('2WemzwuAQF4')[56: 63, 66: 69]/ VideoFromYoutubeURL('qiZLHchtX8c')[239:249](volume_cooficient = 1.2)"""
+v = eval(s)
+print(v)
