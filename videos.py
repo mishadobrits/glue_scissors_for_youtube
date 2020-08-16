@@ -264,7 +264,7 @@ class Video:    #  Use 'POFvmLHWHg' for search
         """
         msg = '''All classes inherited of {} must overload '{}' method;
                  #  Use '0t1SPHSW8B' for search'''
-        msg = str_to_error_message(msg.fotmat(__class__, "get_frame"))
+        msg = str_to_error_message(msg.format(__class__, "get_frame"))
         raise Exception(msg)
 
     def get_duration(self):       #  Use 'Ani5kkF30f' for search
@@ -283,7 +283,7 @@ class Video:    #  Use 'POFvmLHWHg' for search
                 err = f'''you ask about {time} but
                           {self.short_str()}.get_duration() is
                           {self.get_duration()}'''
-                raise OSError(str_to_error_message(err.format))
+                raise OSError(str_to_error_message(err))
             return func(self, time)
         return wrapper
     
@@ -359,7 +359,7 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
             except OSError as e:
                 if i == n - 1:
                     raise e
-            print("attemp {i}: failed. Start {i + 1} attemp")
+            print(f"attemp {i}: failed. Start {i + 1} attemp")
         if i:
             print(f"Video sucsessfuly uploaded in {i + 1} attemps")
 
@@ -432,9 +432,9 @@ class VideoFromImage(Video):          #  Use 'hDygGaJlAH' for search
     @Video.check_time_decorator
     def get_nextsound(self, t):
         part = {}
-        part['end time'] = t + self.get_duration()
+        part['end time'] = t + 1 / VIDEO_FPS # self.get_duration()
         
-        sound = np.zeros(self.get_duration() * AUDIO_FPS * self.sound_channels)
+        sound = np.zeros(AUDIO_FPS * self.sound_channels // VIDEO_FPS)
         part['sound'] = sound.reshape((-1, self.sound_channels))
         return part
     
@@ -812,8 +812,8 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
         self.h = height if height != -1 else frame.shape[0]
         self.video.get_nextsound(0)
 
-    @print_time
-    def _save_part(self, start_time, outputname,
+    # @print_time
+    def _save_part(self, start_time, folder, filecounter,
                    condition="cur_time < end_time"):
         def check_type(part):
             nessery_keys = ['sound', 'end time']
@@ -832,55 +832,63 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
             def release(self):
                 pass
 
-        vnames, outfile_counter = [], -1
+        def save_audio(list_of_n2arr, path):
+            print("save audio", path, len(list_of_n2arr))
+            if not list_of_n2arr:
+                return 
+            sound = np.vstack(list_of_n2arr)
+            audio = AudioArrayClip(np.vstack(sound), AUDIO_FPS)
+            audio.write_audiofile(path, logger=None)
+
         videowriter = FakeVideoWriter()
         last_shape = (-1, -1, 3)
         
-        sound = []
+        sound = []  # [np.array([0, 0], dtype=np.float32)]
         sound_len, frames_len = 0, 0
         cur_time = start_time
         cur_frame = self.video.get_frame(cur_time)
         rt = 0
         while eval(condition):
-            # time.sleep(0.01)
+            cur_frame = self.video.get_frame(cur_time)[:, :, ::-1]
             part = self.video.get_nextsound(cur_time)
             check_type(part)
 
             sound.append(part['sound'])
             sound_len += len(sound[-1])
-            if sound_len / AUDIO_FPS > frames_len / VIDEO_FPS:
-                # cur_frame = image_to_new_size(cur_frame, self.w, self.h)
-                cur_frame = cur_frame[:, :, ::-1]
+            if cur_frame.shape != last_shape:
+                videowriter.release()
+                path = f"{folder}{filecounter}"
+                #print("calling save audio", filecounter)
+                save_audio(sound[:-1], f"{folder}{filecounter}.mp3")
+                filecounter += 1
+                videowriter = VideoWriter(f"{folder}{filecounter}.mp4", -1,
+                                          VIDEO_FPS, cur_frame.shape[1::-1])
+                sound = [sound[-1]]
+                
             while sound_len / AUDIO_FPS > frames_len / VIDEO_FPS:
-                if cur_frame.shape != last_shape:
-                    outfile_counter += 1
-                    videowriter.release()
-                    vnames += [outputname + str(outfile_counter) + ".mp4"]
-                    videowriter = VideoWriter(vnames[-1], -1, VIDEO_FPS,
-                                              cur_frame.shape[1::-1])
                 frames_len += 1
                 videowriter.write(cur_frame)
                 last_shape = cur_frame.shape
             cur_time = part['end time']
-            cur_frame = self.video.get_frame(cur_time)
-        videowriter.release()
-        sound = np.vstack(sound)
         
-        audioname = outputname + ".mp3"
-        AudioArrayClip(sound, AUDIO_FPS).write_audiofile(audioname, logger=None)
-        return vnames
+        videowriter.release()
+        # print("last calling save audio", filecounter)
+        save_audio(sound, f"{folder}{filecounter}.mp3")
+        return filecounter
     
-    def save_part(self, start_time, end_time, outputname):
+    def save_part(self, start_time, end_time, folder, outputname):
         """
         Save video[start_time: end_time] in outputname:
             In outputname.mp4 save frames of video
             In outputname.mp3
         """
-        rt = self._save_part(start_time, outputname, "cur_time < "+ str(end_time))
+        rt = self._save_part(start_time, folder, outputname,
+                             "cur_time < "+ str(end_time))
         return rt
     
-    def save_n_seconds(self, start_time, n, outputname):
-        rt = self._save_part(start_time, outputname, "sound_len < AUDIO_FPS * " + str(n))
+    def save_n_seconds(self, start_time, n, folder, outputname):
+        rt = self._save_part(start_time, outputname, folder,
+                             "sound_len < AUDIO_FPS * " + str(n))
         return rt
     
     def short_str(self):
@@ -962,7 +970,40 @@ def main3(i):
     stream.save_part(0, 5, "rev9#0_5")
     stream.save_part(5, 10, "rev9#5_10") 
 
+def process_str(s, chunk=5):
+    count = FileDict("counters").get_and_write("user_id", 0)
+    FileDict("counters")["user_id"] += 1
+    
+    import sys, os
+    folder = sys.argv[0][:sys.argv[0].rfind("\\")] + f"/video/{str(count)}/"
+    print(folder)
+    try:
+        os.stat(folder)
+    except:
+        os.makedirs(folder)
 
-s = """VideoFromYoutubeURL('2WemzwuAQF4')[56: 63, 66: 69]/ VideoFromYoutubeURL('qiZLHchtX8c')[239:249](volume_cooficient = 1.2)"""
-v = eval(s)
-print(v)
+    @in_new_thread
+    def start_saving(stream):
+        it, file_counter = 0, 0
+        dur = stream.video.get_duration()
+        while it < dur - chunk:
+            print(f"Writing... {it, it + chunk, folder, file_counter}")
+            file_counter = stream.save_part(it, it + chunk, folder, file_counter)
+            # file_counter -= 1
+            it += chunk
+
+        if it != dur:
+            print(f"last {it, dur}")
+            stream.save_part(it, dur, folder, file_counter)        
+    start_saving(VideoSaveStream(eval(s)))    
+
+
+# image_url = r"https://img2.akspic.ru/image/88423-burdzh_halifa-neboskreb-vyshka-zdanie-liniya_gorizonta-1920x1200.jpg"
+# s = """VideoFromYoutubeURL('2WemzwuAQF4')[56: 63, 66: 69]/ VideoFromYoutubeURL('qiZLHchtX8c')[239:249](volume_cooficient = 1.2)"""
+# s = "VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromYoutubeURL('U3-6jv0NCkk')[206:212]"
+# s = f"VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromImageURL('{image_url}', 7)"
+# process_str(s)
+
+# folder = r'C:\\Users\\m\\Desktop\\PythonProjects\\YouTube_GlueAndScissors\\Code\\glue_scissors_for_youtube/video/51/'
+
+# VideoSaveStream(eval(s)).save_part(5, 10, folder, 1)
