@@ -833,7 +833,6 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
                 pass
 
         def save_audio(list_of_n2arr, path):
-            print("save audio", path, len(list_of_n2arr))
             if not list_of_n2arr:
                 return 
             sound = np.vstack(list_of_n2arr)
@@ -901,82 +900,12 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
         return self.long_str()
 
 
-import time
-#t = time.time()
-at, cur_time = [0] * 20, time.time()
-def print_time(i):
-    global at, cur_time
-    # print(time.time() - t, i)
-    #if i == 1:
-    #    print(at, bt, time.time())
-    at[i] += time.time() - cur_time
-    cur_time = time.time()
-    
-#"""
-def main0(i):    
-    rev9_url = r"https://www.youtube.com/watch?v=2WemzwuAQF4" #t=56s"
-    rev9_8s = VideoFromYoutubeURL(rev9_url)[56: 64]
-    rev9_3s = VideoFromYoutubeURL(rev9_url)[66: 69]
-    horror_url = r"https://www.youtube.com/watch?v=qiZLHchtX8c"
-    horror_8s = VideoFromYoutubeURL(horror_url)[239:247]
-    horror_11s = VideoFromYoutubeURL(horror_url)[239:250]
-
-    # print(dir(rev9_8s))
-    video = (rev9_8s + rev9_3s) / horror_11s
-    stream = VideoSaveStream(video[::1])
-    #import time
-    #t = time.time()
-    print(str(stream))
-    print(stream.short_str())
-    stream.save_part(0, 5, "outname0-5")
-    stream.save_part(0, 5, "outname5-10")
-    print("---------------------------------" + str(i))
-    #print(time.time() - t)
-
-def main1(i):
-    im_urls = []
-    im_urls += [r"https://img2.akspic.ru/image/88423-burdzh_halifa-neboskreb-vyshka-zdanie-liniya_gorizonta-1920x1200.jpg"]
-    im_urls += [r"https://i.pinimg.com/736x/42/5c/c6/425cc6264e40b0956322c94af5a447b9.jpg"]
-    im_urls += [r"https://i.artfile.ru/2048x1357_1028624_%5Bwww.ArtFile.ru%5D.jpg"]
-    im_urls += [r"https://mirpokrytij.ru/upload/iblock/83c/83c06d6848db17f5068a79f2cbc38ab1.jpg"]
-
-    video = SumOfVideo([VideoFromImageURL(elem, 2) for elem in im_urls])
-    stream = VideoSaveStream(video[::0.66], 1700, 1000)
-    print(stream.save_n_seconds(0, 12, "cities"))
-    # print(str(stream))
-    print(str(stream))
-    print(stream.short_str())
-    
-def main2(i):
-    video_id = "V1sRabJhGWs"
-    video = VideoFromYoutubeURL(video_id)
-
-    settings = Settings(min_quiet_time=0.3,
-                        sound_threshold = 0.2,
-                        quiet_speed = 6)
-    sva = video(settings)
-    w, h = video.get_frame(0).shape[1], video.get_frame(0).shape[0]
-    stream = VideoSaveStream(sva, w, h + 100)
-    print(str(stream))
-    print(stream.short_str())
-    stream.save_n_seconds(0, 30, "sva_output0-30")
-    
-
-def main3(i):
-    rev10_5 = VideoFromYoutubeURL("2WemzwuAQF4")[56:63.5, 66:69]
-    stream = VideoSaveStream(rev10_5)
-    print(str(stream))
-    print(stream.short_str())
-    stream.save_part(0, 5, "rev9#0_5")
-    stream.save_part(5, 10, "rev9#5_10") 
-
 def process_str(s, chunk=5):
     count = FileDict("counters").get_and_write("user_id", 0)
     FileDict("counters")["user_id"] += 1
     
     import sys, os
     folder = sys.argv[0][:sys.argv[0].rfind("\\")] + f"/video/{str(count)}/"
-    print(folder)
     try:
         os.stat(folder)
     except:
@@ -987,23 +916,20 @@ def process_str(s, chunk=5):
         it, file_counter = 0, 0
         dur = stream.video.get_duration()
         while it < dur - chunk:
-            print(f"Writing... {it, it + chunk, folder, file_counter}")
+            # print(f"Writing... {it, it + chunk, folder, file_counter}")
             file_counter = stream.save_part(it, it + chunk, folder, file_counter)
             # file_counter -= 1
             it += chunk
 
         if it != dur:
-            print(f"last {it, dur}")
+            # print(f"last {it, dur}")
             stream.save_part(it, dur, folder, file_counter)        
     start_saving(VideoSaveStream(eval(s)))    
 
 
 # image_url = r"https://img2.akspic.ru/image/88423-burdzh_halifa-neboskreb-vyshka-zdanie-liniya_gorizonta-1920x1200.jpg"
 # s = """VideoFromYoutubeURL('2WemzwuAQF4')[56: 63, 66: 69]/ VideoFromYoutubeURL('qiZLHchtX8c')[239:249](volume_cooficient = 1.2)"""
-# s = "VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromYoutubeURL('U3-6jv0NCkk')[206:212]"
+s = "VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromYoutubeURL('U3-6jv0NCkk')[206:212] +  VideoFromYoutubeURL('A8Fon7DWho4')[65:69]"
 # s = f"VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromImageURL('{image_url}', 7)"
-# process_str(s)
+process_str(s)
 
-# folder = r'C:\\Users\\m\\Desktop\\PythonProjects\\YouTube_GlueAndScissors\\Code\\glue_scissors_for_youtube/video/51/'
-
-# VideoSaveStream(eval(s)).save_part(5, 10, folder, 1)
