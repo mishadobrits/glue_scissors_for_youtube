@@ -2,7 +2,7 @@ from moviepy.editor import VideoFileClip
 from pafy import new as pafy_new
 from filedict import FileDict
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont, ImageColor
 
 url = 'http://youtube.com/watch?v=iwGFalTRHDA'
 
@@ -44,6 +44,7 @@ def get_stream_url(video_id):
 
 
 def str_to_error_message(msg):
+    """Delete \n from msg and replace ' '*n -> ' '"""
     return " ".join(list(msg.replace("\n", " ").split()))
 
 
@@ -69,4 +70,80 @@ def image_to_new_size(image, new_w, new_h):
     black[y_up: y_up + image_h, x_left: x_left + image_w, :] = image
 
     return black
+
+def image_from_text(text, bg="black", fg="white", font="arial",
+                    letter_size=40, align="center", indent=5, up_indent=-1,
+                    right_indent=-1, down_indent=-1, left_indent=-1):
+    #  Use '90kP2mTP9v' for search
+    """
+    Create image with specified text.
+    kwargs:
+    ----bg="black", fg="white - background and frontground color
+             in im_type format. You can use tuple in 'RGB' format.
+             for example (0, 0, 0) - black in 'RGB'.
+    ----font="arial" - text font. Must be one of PIL fonts.
+    ----letter_size=40 - size of one letter
+    ----align="center"(or "left" or "right") - aling of text
+    ----indent=5 - defoult indent
+    ----up_indent, right_indent, down_indent, left_indent=-1 - indents from
+            up, right, down and left.
+            If value not specified it will beconsidered equal 'indent' value
+    """
+    try:
+        ImageFont.truetype(font + ".ttf")
+    except Exception as e:
+        print(e)
+        raise ValueError(f'image_from_text(...) takes wrong front {font}.ttf')
+    def check_color_existance(arg):
+        if isinstance(arg, str):
+            try:
+                ImageColor.getcolor(arg, "RGB")
+            except:
+                raise ValueError(f"color '{arg}' is not exist")
+        elif isinstance(arg, tuple):
+            if len(arg) != 3:
+                msg = f'''color tuple must have lenght 3'.
+                          len({arg}) = {len(arg)} were given'''
+                raise ValueError(str_to_error_message(msg))
+        else:
+            msg = f'''color argument must be 'str' or 'tuple'.
+                      type({arg}) = {type(arg)} were given'''
+            raise ValueError(str_to_error_message(msg))
+
+    check_color_existance(bg)
+    check_color_existance(fg)
+
+    im = Image.new("RGB", (1000, 1000), color=bg)
+    bg_only = np.array(im)
+    ImageDraw.Draw(im).text(
+        (0, 0),  # Coordinates
+        text=text,  # Text
+        fill=fg,  # Color
+        font=ImageFont.truetype(font + ".ttf", letter_size, encoding='UTF-8'),
+        align=align
+    )
+    im_arr = np.array(im)
+    
+    columns = (im_arr != bg_only).astype(int).max(axis=(0, 2))
+    columns = np.vstack((columns, np.arange(len(columns))))
+    columns = columns[:, columns[0] != 0]
+    left, right = columns[1].min(), columns[1].max() + 1
+
+    rows = (im_arr != bg_only).astype(int).max(axis=(1, 2))
+    rows = np.vstack((rows, np.arange(len(rows))))
+    rows = rows[:, rows[0] != 0]
+    top, bottom = rows[1].min(), rows[1].max() + 1
+    im_arr = im_arr[top: bottom, left: right] 
+     
+    def get_indent(value):
+        return value if value != -1 else indent
+    
+    up_indent, down_indent = get_indent(up_indent), get_indent(down_indent)
+    right_indent, left_indent = get_indent(right_indent), get_indent(left_indent)
+
+    rt = bg_only[:up_indent + down_indent + bottom - top,
+                 :right_indent + left_indent + right - left]
+    rt[up_indent: -down_indent, left_indent: -right_indent] = im_arr
+    # Image.fromarray(rt).show()
+    return rt
 

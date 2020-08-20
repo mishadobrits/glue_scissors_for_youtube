@@ -40,9 +40,10 @@ Idea:
 
 Creating video: #  Use 'HglSFYJDDE' for search
 You can create this types of video
-    VideoFromYoutubeURL   #  Use 'j7ItYy3N2n' for search
-    VideoFromImageURL     #  Use 'fjR1wW8o9d' for search
-    VideoFromText         #  Use '55FPkUD5WO' for search
+    VideoFromYoutubeURL   !!!!!      #  Use 'j7ItYy3N2n' for search
+    VideoFromImageURL                #  Use 'fjR1wW8o9d' for search
+    VideoFromText                    #  Use '55FPkUD5WO' for search
+    VideoFromFrameFromYoutubeVideo   #  Use 'hBavQ96HNM' for search
 
     SumOfVideo             # or video1 + video2  #  Use '0kxprGdgk8' for search
     SeparatedVideoAndAudio # or video1 / video2  #  Use 'iPgx8iCcdC' for search
@@ -69,11 +70,11 @@ horror_11s = horror[239:250]
 
 
 # You can set **kwargs that in Settings:
-# brightness, speed, volume and max_volume and e.c.t.
+# brightness, speed, volume_cooficient and max_volume and e.c.t.
 # like this.
 rev9 = VideoFromYoutubeURL("2WemzwuAQF4")
-rev9_8s = rev9[56: 64](speed=0.9, volume=1.2)
-rev9_3s = rev9[66: 69](speed=0.9, volume=1.2)
+rev9_8s = rev9[56: 64](speed=0.9, volume_cooficient=1.2)
+rev9_3s = rev9[66: 69](speed=0.9, volume_cooficient=1.2)
 # In all classes __init__ mathod copy video arguments, so in
 # rev9_11s = rev9_8s + rev9_3s, rev9 woll loads twice 
 # It is the same
@@ -85,7 +86,7 @@ rev9_11s = rev9_8s + rev9_3s   # in "2WemzwuAQF4" will skipped 64-66
 # it is the same rev9_11s = SumOfVideo((rev9_8s, rev9_3s))
 
 # You also can use
-rev9_11s = rev9[56: 64, 66: 69](speed=0.9, volume=1.2)
+rev9_11s = rev9[56: 64, 66: 69](speed=0.9, volume_cooficient=1.2)
 # If you use this way (v2 = v1[st1:end1, st2:end3, st3:end3, ...])
 # v1 will loads twice.
 
@@ -150,6 +151,8 @@ Classes tree:
 └VideoSaveStream               #  Use 'FwLJImGxRF' for search
 
 To check whether 'obj' is a video use isinstance(obj, Video)
+Also All Video classes have __str__ method.
+
 
 """
 
@@ -161,7 +164,8 @@ from cv2 import VideoWriter
 from settings import Settings
 from pafy import new as pafy_new
 from functions import (in_new_thread, str_to_error_message, get_stream_url,
-                       print_time, squeeze_sound, image_to_new_size)
+                       print_time, squeeze_sound, image_to_new_size,
+                       image_from_text)
 from filedict import FileDict
 import numpy as np
 from bisect import bisect_right
@@ -180,6 +184,7 @@ class Video:    #  Use 'POFvmLHWHg' for search
     Contain 
         v1[start_time:end_time] = PartOfVideo(v1, start_time, end_time)
         v1[start1:end1, start2:end2, ...] = PartsOfOneVideo(v1, slices_tuple)
+        v1 * number = v1[(:: for _ in range(n))] 
         v1 + v2 = SumOfVideo((v1, v2))
         v1(**kwargs) = SmartAcceleratedVideo(v1, Settings(kwargs))
         v1 / v2 = SeparatedVideoAndAudio(video=v1, audio=v2).
@@ -191,6 +196,7 @@ class Video:    #  Use 'POFvmLHWHg' for search
             If you want to use SumOfVideo of your type
             !!! if you use SumOfVideo(your_type[start:end]) you don't need
             overload it becouse PartOfVideo have own 'get_duration' method.
+    If you want to create VideoSaveStream(video)
     
     """
     def __add__(self, other):
@@ -198,6 +204,13 @@ class Video:    #  Use 'POFvmLHWHg' for search
 
     def __truediv__(self, other):
         return SeparatedVideoAndAudio(self, other)
+
+    def __mul__(self, other):
+        if not isinstance(other, int):
+            msg = f'''Video.__mul__ takes int argument{other}.
+                  type({other}) = {type(other)} were given'''
+            raise TypeError(msg)
+        return RepeatedVideo(self, other)
 
     def __getitem__(self, arg):
         """
@@ -297,6 +310,12 @@ class Video:    #  Use 'POFvmLHWHg' for search
             return func(self, *args, **kwargs)
         return wrapper
 
+    def __str__(self):
+        try:
+            return self.short_str()
+        except AttributeError:
+            return object.__str__(self)
+
 
 class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for search
     """
@@ -308,6 +327,9 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
     ----start_time - time in seconds    (float)
     ----end_time - time in seconds    (float)
     ----settings=Settings() - settings for video
+
+    __init__ method doesn't load video.
+    For loading video use video.get_frame(0) or video.get_nextsound(0).
     """
     def __init__(self, short_link, duration=-1):
         def get_id(url):
@@ -415,9 +437,6 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
         msg = f'''{__class__.__name__}('{self.video_id}')'''
         return msg
 
-    def __str__(self):
-        return self.long_str()
-
 
 class VideoFromImage(Video):          #  Use 'hDygGaJlAH' for search
     """
@@ -428,6 +447,7 @@ class VideoFromImage(Video):          #  Use 'hDygGaJlAH' for search
         self.image = image
         self.duration = duration
         self.sound_channels = sound_channels
+        # print(image, duration)
 
     @Video.check_time_decorator
     def get_nextsound(self, t):
@@ -453,15 +473,41 @@ class VideoFromImage(Video):          #  Use 'hDygGaJlAH' for search
                   sound_channels={self.sound_channels})'''
         return msg
 
-    def __str__(self):
-        return self.long_str()
-
 
 class VideoFromText(VideoFromImage):       #  Use 'Pv1U9ovsOb' for search
-    pass
+    """
+    Create VideoFromImage object with image with yours text
+    ('text' in __init__ args)
+
+    __init__ args, kwargs
+    ----text
+    ----duration
+    ----args and kwargs for image_from_text from functions.py
+                             #  Use '90kP2mTP9v' for search
+    """
+    def __init__(self, text, duration, *args, **kwargs):
+        self.text, self.dur = text, duration
+        self.args, self.kwargs = args, kwargs
+        super().__init__(image_from_text(text, *args, **kwargs), duration)
+
+    def short_str(self):
+        args = str(self.args) if self.args else ""
+        kwargs = str(self.kwargs) if self.kwargs else ""
+        rt = f"{__class__.__name__}('{self.text}', {self.dur}"
+        rt += ', ' if args or kwargs else ''
+        rt += args + ", " if args and kwargs else "" + kwargs
+        rt += ")"
+        return rt
+
+    def long_str(self):
+        return self.short_str()
 
 
 class VideoFromImageURL(VideoFromImage):   #  Use 'f5vfFwOTVd' for search
+    """
+    Create VideoFromImage(image, duration) where image tooked from
+    image_link URL.
+    """
     def __init__(self, image_link, duration, sound_channels=2):
         from urllib.error import HTTPError
         self.image_link = image_link
@@ -501,9 +547,6 @@ class VideoFromFrameFromYoutubeVideo(VideoFromImage):
         
     def long_str(self):
         return f"{__class__.__name__}({self.video}, {self.time})"
-
-    def __str__(self):
-        return self.long_str()
 
 
 class PartOfVideo(Video):             #  Use '1U9YldMWW2' for search
@@ -545,10 +588,7 @@ class PartOfVideo(Video):             #  Use '1U9YldMWW2' for search
         rt = f'''{__class__.__name__}({self.video},
                  {self.start_time}, {self.end_time})'''
         return str_to_error_message(rt)
-
-    def __str__(self):
-        return self.long_str()
-
+    
 
 class SumOfVideo(Video):              #  Use 'Ci1lua3fAb' for search
     """
@@ -632,9 +672,6 @@ class SumOfVideo(Video):              #  Use 'Ci1lua3fAb' for search
         if not self.need_copy:
             rt = ", need_copy=False"
         return rt + ")"
-    
-    def __str__(self):
-        return self.long_str()
 
 
 class PartsOfOneVideo(SumOfVideo):        #  Use 'GnJ70Y0u1v' for search
@@ -647,7 +684,7 @@ class PartsOfOneVideo(SumOfVideo):        #  Use 'GnJ70Y0u1v' for search
     # But the second way, loads the video again and again.
     # The first one loads only twice
     """
-    Video.deepcopy_video_decorator
+    @Video.deepcopy_video_decorator
     def __init__(self, video, slices_list):
         self.video, self.slices_list = video, slices_list
         import copy
@@ -667,9 +704,25 @@ class PartsOfOneVideo(SumOfVideo):        #  Use 'GnJ70Y0u1v' for search
     def long_str(self):
         return f"{self.video}{str(self.slices_list)}"
 
-    def __str__(self):
-        return self.long_str()
 
+class RepeatedVideo(PartsOfOneVideo):
+    """
+    Repeat video n < MAXIMAL_N times.
+    """
+    MAXIMAL_N = 1000
+    def __init__(self, video, n):
+        self.n = n
+        if n > RepeatedVideo.MAXIMAL_N:
+            msg = f'n = {n} > RepeatedVideo.MAXIMAL_N = {RepeatedVideo.MAXIMAL_N}'
+            raise ValueError(msg)
+        super().__init__(video, tuple(slice(None) for _ in range(n)))
+
+    def short_str(self):
+        return f"{self.video.short_str()} * {self.n}"
+
+    def long_str(self):
+        return f"{__class__.__name__}({self.video.long_str()}, {self.n})"
+    
                                            
 class SeparatedVideoAndAudio(Video):  #  Use '0uceFGY5J0' for search
     """
@@ -680,7 +733,7 @@ class SeparatedVideoAndAudio(Video):  #  Use '0uceFGY5J0' for search
     If frames_video and sound_video have different duration, frames
     Video will be add with last frame of frames_video to sound_video.duration()
     """
-    Video.deepcopy_video_decorator
+    @Video.deepcopy_video_decorator
     def __init__(self, frames_video, sound_video):
         self.frames_video = frames_video
         self.frames_video_duration = self.frames_video.get_duration()
@@ -898,38 +951,3 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
 
     def __str__(self):
         return self.long_str()
-
-
-def process_str(s, chunk=5):
-    count = FileDict("counters").get_and_write("user_id", 0)
-    FileDict("counters")["user_id"] += 1
-    
-    import sys, os
-    folder = sys.argv[0][:sys.argv[0].rfind("\\")] + f"/video/{str(count)}/"
-    try:
-        os.stat(folder)
-    except:
-        os.makedirs(folder)
-
-    @in_new_thread
-    def start_saving(stream):
-        it, file_counter = 0, 0
-        dur = stream.video.get_duration()
-        while it < dur - chunk:
-            # print(f"Writing... {it, it + chunk, folder, file_counter}")
-            file_counter = stream.save_part(it, it + chunk, folder, file_counter)
-            # file_counter -= 1
-            it += chunk
-
-        if it != dur:
-            # print(f"last {it, dur}")
-            stream.save_part(it, dur, folder, file_counter)        
-    start_saving(VideoSaveStream(eval(s)))    
-
-
-# image_url = r"https://img2.akspic.ru/image/88423-burdzh_halifa-neboskreb-vyshka-zdanie-liniya_gorizonta-1920x1200.jpg"
-# s = """VideoFromYoutubeURL('2WemzwuAQF4')[56: 63, 66: 69]/ VideoFromYoutubeURL('qiZLHchtX8c')[239:249](volume_cooficient = 1.2)"""
-s = "VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromYoutubeURL('U3-6jv0NCkk')[206:212] +  VideoFromYoutubeURL('A8Fon7DWho4')[65:69]"
-# s = f"VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromImageURL('{image_url}', 7)"
-process_str(s)
-
