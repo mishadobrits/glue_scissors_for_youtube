@@ -30,6 +30,7 @@ def to_url(video):
     elif type(video) == videos.SmartAcceleratedVideo:
         return "(" + to_url(video.video) + ")" + str(video.settings)[8:]
 
+    
 def video_from_very_short_str(string):
     it = 0   # iterator
     operators_info = {"+": {"operands_numb": 2, "priority": 1},
@@ -58,40 +59,29 @@ def video_from_very_short_str(string):
             pass
 
 
-def process_str(s, chunk=5):
-    count = FileDict("counters").get_and_write("user_id", 0)
-    FileDict("counters")["user_id"] += 1
-    
-    import sys, os
-    folder = sys.argv[0][:sys.argv[0].rfind("\\")] + f"/video/{str(count)}/"
-    try:
-        os.stat(folder)
-    except:
-        os.makedirs(folder)
+@in_new_thread
+def process_str(s, folder, chunk=5):
+    stream = VideoSaveStream(eval(s))
+    it, file_counter = 0, 0
+    dur = stream.video.get_duration()
+    while it < dur - chunk:
+        # print(f"Writing... {it, it + chunk, folder, file_counter}")
+        file_counter = stream.save_part(it, it + chunk, folder, file_counter)
+        # file_counter -= 1
+        it += chunk
 
-    @in_new_thread
-    def start_saving(stream):
-        it, file_counter = 0, 0
-        dur = stream.video.get_duration()
-        while it < dur - chunk:
-            # print(f"Writing... {it, it + chunk, folder, file_counter}")
-            file_counter = stream.save_part(it, it + chunk, folder, file_counter)
-            # file_counter -= 1
-            it += chunk
+    if it != dur:
+        # print(f"last {it, dur}")
+        stream.save_part(it, dur, folder, file_counter)        
 
-        if it != dur:
-            # print(f"last {it, dur}")
-            stream.save_part(it, dur, folder, file_counter)        
-    start_saving(VideoSaveStream(eval(s)))    
-
-
+'''
 # image_url = r"https://img2.akspic.ru/image/88423-burdzh_halifa-neboskreb-vyshka-zdanie-liniya_gorizonta-1920x1200.jpg"
 # s = """VideoFromYoutubeURL('2WemzwuAQF4')[56: 63, 66: 69]/ VideoFromYoutubeURL('qiZLHchtX8c')[239:249](volume_cooficient = 1.2)"""
 s = r"VideoFromText('Подборка самых\nжизненных фраз\nOneTwo', 3) + VideoFromYoutubeURL('KWbANha2iws')[307:309, 307:309:0.66](volume_cooficient=0) + VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromYoutubeURL('U3-6jv0NCkk')[206:212] +  VideoFromYoutubeURL('A8Fon7DWho4')[65:69]"
-# s = r"VideoFromYoutubeURL('KWbANha2iws')[307:309, 307:309:0.66](volume_cooficient=0)"
+s = r"VideoFromYoutubeURL('KWbANha2iws')[307:309, 307:309:0.66](volume_cooficient=0) + VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromYoutubeURL('U3-6jv0NCkk')[206:212] +  VideoFromYoutubeURL('A8Fon7DWho4')[65:69]"
 # s = f"VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromImageURL('{image_url}', 7)"
-process_str(s)
-
+folder = r"C:\Users\m\Desktop\PythonProjects\YouTube_GlueAndScissors\Code\glue_scissors_for_youtube\video\103/"
+process_str(s, folder)'''
 """
 temp = videos.VideoFromYoutubeURL('V1sRabJhGWs')
 v1 = temp[0:10, 15:20]
