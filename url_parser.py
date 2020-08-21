@@ -58,9 +58,14 @@ def video_from_very_short_str(string):
         elif 1:
             pass
 
-
 @in_new_thread
 def process_str(s, folder, chunk=5):
+    import os
+    try:
+        os.stat(folder)
+    except:
+        os.makedirs(folder)
+
     stream = VideoSaveStream(eval(s))
     it, file_counter = 0, 0
     dur = stream.video.get_duration()
@@ -74,14 +79,15 @@ def process_str(s, folder, chunk=5):
         # print(f"last {it, dur}")
         stream.save_part(it, dur, folder, file_counter)        
 
-'''
+r"""
 # image_url = r"https://img2.akspic.ru/image/88423-burdzh_halifa-neboskreb-vyshka-zdanie-liniya_gorizonta-1920x1200.jpg"
-# s = """VideoFromYoutubeURL('2WemzwuAQF4')[56: 63, 66: 69]/ VideoFromYoutubeURL('qiZLHchtX8c')[239:249](volume_cooficient = 1.2)"""
+# s = "VideoFromYoutubeURL('2WemzwuAQF4')[56: 63, 66: 69]/ VideoFromYoutubeURL('qiZLHchtX8c')[239:249](volume_cooficient = 1.2)"
 s = r"VideoFromText('Подборка самых\nжизненных фраз\nOneTwo', 3) + VideoFromYoutubeURL('KWbANha2iws')[307:309, 307:309:0.66](volume_cooficient=0) + VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromYoutubeURL('U3-6jv0NCkk')[206:212] +  VideoFromYoutubeURL('A8Fon7DWho4')[65:69]"
 s = r"VideoFromYoutubeURL('KWbANha2iws')[307:309, 307:309:0.66](volume_cooficient=0) + VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromYoutubeURL('U3-6jv0NCkk')[206:212] +  VideoFromYoutubeURL('A8Fon7DWho4')[65:69]"
 # s = f"VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromImageURL('{image_url}', 7)"
-folder = r"C:\Users\m\Desktop\PythonProjects\YouTube_GlueAndScissors\Code\glue_scissors_for_youtube\video\103/"
-process_str(s, folder)'''
+folder = r"C:\Users\m\Desktop\PythonProjects\YouTube_GlueAndScissors\Code\glue_scissors_for_youtube\video\104/"
+process_str(s, folder)"""
+
 """
 temp = videos.VideoFromYoutubeURL('V1sRabJhGWs')
 v1 = temp[0:10, 15:20]
