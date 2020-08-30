@@ -412,26 +412,23 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
         part['end time'] = end_time
         part['sound'] = self.audio.subclip(time, end_time).to_soundarray()
         return part
-
+    
+    @_download_webm_decorator
     def get_duration(self):
         if self.duration == -1:
-            try:
-                super(Video, self).get_duration()
-            except AttributeError as e:
-                msg = ''' .But you don't point out duration in
+            msg = ''' .But you don't point out duration in
                          {}.__init__({}, {}). It trror may be raised if int
                          SumOfVideo previos video have small duration and
                          this video didn't have time to download.
                       '''.format(__class__, self, self.video_id)
-                raise AttributeError(str(e) + msg)
-
+            raise AttributeError(str_to_error_message(msg))
         return self.duration
 
     def __deepcopy__(self, memo):
-        return VideoFromYoutubeURL(self.video_id)
+        return VideoFromYoutubeURL(self.video_id, self.get_duration())
 
     def short_str(self):
-        return str(self)
+        return self.long_str()
         
     def long_str(self):
         msg = f'''{__class__.__name__}('{self.video_id}')'''

@@ -86,7 +86,7 @@ s = r"VideoFromText('Подборка самых\nжизненных фраз\nO
 s = r"VideoFromYoutubeURL('KWbANha2iws')[307:309, 307:309:0.66](volume_cooficient=0) + VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromYoutubeURL('U3-6jv0NCkk')[206:212] +  VideoFromYoutubeURL('A8Fon7DWho4')[65:69]"
 # s = f"VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromImageURL('{image_url}', 7)"
 folder = r"C:\Users\m\Desktop\PythonProjects\YouTube_GlueAndScissors\Code\glue_scissors_for_youtube\video\104/"
-process_str(s, folder)"""
+process_str(s, folder) # """
 
 """
 temp = videos.VideoFromYoutubeURL('V1sRabJhGWs')
