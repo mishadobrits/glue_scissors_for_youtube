@@ -171,6 +171,7 @@ import numpy as np
 from bisect import bisect_right
 from PIL import Image
 from urllib.request import urlopen
+import wave
 
 
 constants = FileDict("constants")
@@ -293,7 +294,7 @@ class Video:    #  Use 'POFvmLHWHg' for search
     def check_time_decorator(func):
         def wrapper(self, time):
             if time > self.get_duration():
-                err = f'''you ask about {time} but
+                err = f'''You ask about {time} but
                           {self.short_str()}.get_duration() is
                           {self.get_duration()}'''
                 raise OSError(str_to_error_message(err))
@@ -315,7 +316,7 @@ class Video:    #  Use 'POFvmLHWHg' for search
             return self.short_str()
         except AttributeError:
             return object.__str__(self)
-
+Video.id = 0
 
 class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for search
     """
@@ -332,6 +333,7 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
     For loading video use video.get_frame(0) or video.get_nextsound(0).
     """
     def __init__(self, short_link, duration=-1):
+        self.id = Video.id; Video.id += 1
         def get_id(url):
             if not url.startswith("http"):
                 return url
@@ -365,6 +367,7 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
         if self.is_downloaded:
             return
         if self.start_downloading and not self.is_downloaded:
+            print("waiting")
             import time
             while not self.is_downloaded:
                 time.sleep(0.01)
@@ -376,7 +379,8 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
         for i in range(n):
             try:
                 link = r"https://www.youtube.com/watch?v=" + self.video_id
-                super().__init__(get_stream_url(link))
+                super().__init__(get_stream_url(self.video_id))
+                print(f"({self.id}): Video {self.video_id} sucssesfuly loaded")
                 break
             except OSError as e:
                 if i == n - 1:
@@ -392,11 +396,17 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
     def _download_webm_decorator(func):
         def wrapper(self, *args, **kwargs):
             self.download_webm()
-            return func(self, *args, **kwargs)
+            try:
+                return func(self, *args, **kwargs)
+            except OSError:
+                import copy
+                self = copy.deepcopy(self)
+                return func(self, *args, **kwargs)
         return wrapper
 
     @_download_webm_decorator
     def get_frame(self, t):
+        # print(f"get_frame calling {self.id}")
         t = self.get_frame_time(t)
         return super().get_frame(t) 
 
@@ -404,7 +414,8 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
         return time - time % (1 / VIDEO_FPS)
 
     @_download_webm_decorator
-    def get_nextsound(self, time):     
+    def get_nextsound(self, time):
+        # print("get_nextsound calling")
         end_time = time + 1 / VIDEO_FPS
         self.last_asked_time = end_time
         
@@ -413,8 +424,9 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
         part['sound'] = self.audio.subclip(time, end_time).to_soundarray()
         return part
     
-    @_download_webm_decorator
+    # @_download_webm_decorator
     def get_duration(self):
+        # print("get_duration calling")
         if self.duration == -1:
             msg = ''' .But you don't point out duration in
                          {}.__init__({}, {}). It trror may be raised if int
@@ -425,7 +437,7 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
         return self.duration
 
     def __deepcopy__(self, memo):
-        return VideoFromYoutubeURL(self.video_id, self.get_duration())
+        return VideoFromYoutubeURL(self.video_id, self.duration)
 
     def short_str(self):
         return self.long_str()
@@ -785,6 +797,7 @@ class SmartAcceleratedVideo(Video):   #  Use '89FAQvklsC' for search
             self.last_loud_time = time
         if time - self.last_loud_time < s.get_min_quiet_time():
             k = s.get_loud_speed() * s.get_global_speed()
+            # print(f"k: {k}")
             sound = sound * s.get_loud_volume_cooficient()
         elif time - self.last_loud_time > s.get_max_quiet_time():
             k = 10 ** 10
@@ -878,51 +891,59 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
                     raise TypeError(str_to_error_message(msg))
             return True
 
-        class FakeVideoWriter:
-            def release(self):
-                pass
+        class FakeClass:
+            def release(self): pass
 
-        def save_audio(list_of_n2arr, path):
-            if not list_of_n2arr:
-                return 
-            sound = np.vstack(list_of_n2arr)
-            audio = AudioArrayClip(np.vstack(sound), AUDIO_FPS)
-            audio.write_audiofile(path, logger=None)
+            def close(self): pass
 
-        videowriter = FakeVideoWriter()
-        last_shape = (-1, -1, 3)
+        def get_abs_max(n2array):
+            first, second = n2array[:, 0], n2array[:, 1]
+            indexes = (np.abs(first) > np.abs(second)).astype(int)
+            return first * indexes + second * (1 - indexes)
+
+        audiowriter, videowriter = FakeClass(), FakeClass()
+        last_shape, last_time = (-1, -1, 3), -1
         
-        sound = []  # [np.array([0, 0], dtype=np.float32)]
         sound_len, frames_len = 0, 0
         cur_time = start_time
         cur_frame = self.video.get_frame(cur_time)
-        rt = 0
         while eval(condition):
             cur_frame = self.video.get_frame(cur_time)[:, :, ::-1]
+            if int(cur_time / 60) > int(last_time / 60):
+                print(f"Start saving {int(cur_time / 60)} minute")
+                last_time = cur_time
+            
             part = self.video.get_nextsound(cur_time)
             check_type(part)
 
-            sound.append(part['sound'])
-            sound_len += len(sound[-1])
             if cur_frame.shape != last_shape:
-                videowriter.release()
+                last_shape = cur_frame.shape
+                videowriter.release(); audiowriter.close()
                 path = f"{folder}{filecounter}"
-                #print("calling save audio", filecounter)
-                save_audio(sound[:-1], f"{folder}{filecounter}.mp3")
+                # print("calling save audio", filecounter)
+                # save_audio(sound[:-1], f"{folder}{filecounter}.mp3")
                 filecounter += 1
                 videowriter = VideoWriter(f"{folder}{filecounter}.mp4", -1,
                                           VIDEO_FPS, cur_frame.shape[1::-1])
-                sound = [sound[-1]]
+                
+                audiowriter = wave.open(f"{folder}{filecounter}.wav", "w")
+                audiowriter.setnchannels(4)
+                audiowriter.setsampwidth(2)
+                audiowriter.setframerate(AUDIO_FPS)
                 
             while sound_len / AUDIO_FPS > frames_len / VIDEO_FPS:
                 frames_len += 1
                 videowriter.write(cur_frame)
-                last_shape = cur_frame.shape
+
+            sound = part['sound'][:, 0] * (2 ** 16 - 1)
+            sound = np.repeat(sound, 2).astype(int).reshape((-1, 2))
+            sound_len += sound.shape[0]
+            audiowriter.writeframes(sound.tobytes())
+            
             cur_time = part['end time']
         
-        videowriter.release()
-        # print("last calling save audio", filecounter)
-        save_audio(sound, f"{folder}{filecounter}.mp3")
+        videowriter.release(); audiowriter.close()
+        # print(f"{sound_len} = {AUDIO_FPS} * {sound_len / AUDIO_FPS}")
         return filecounter
     
     def save_part(self, start_time, end_time, folder, outputname):

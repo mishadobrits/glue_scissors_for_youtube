@@ -2,6 +2,22 @@
 
 
 SETTING_EXTENTION = "SVA_settings"
+TRIVIAL_DICT = {'global_speed': 1,
+                'loud_speed': 1,
+                'quiet_speed': 1,
+                'min_quiet_time': 0.5,
+                'max_quiet_time': 10 ** 10,
+                'sound_threshold': 0.1,
+                'volume_cooficient': 1,
+                'quiet_volume_cooficient': 1,
+                'loud_volume_cooficient': 1,
+                'max_volume': 1,
+                'decrease': 1,
+                'brightness': 1,
+                'contras_ratio': 1,
+                'rotate_image': 0,
+                'inverted': False,
+               }
 
 
 class Settings:
@@ -34,7 +50,7 @@ class Settings:
         loud_volume_cooficient - multiplied by sound in loud video parts 
         max_volume - if cur_sound > max_volume: cur_sound = max_volume
         
-        resize - # number to !decrease! image
+        decrease - # number to !decrease! image
         brightness - number to make more bright
         contras_ratio - number to make more bright
         rotate_image (only 0, 1, 2, 3) - how many 90-turnes of video
@@ -69,28 +85,28 @@ class Settings:
             with open(filepath, "r") as f:
                 kwargs = eval("".join(f.readlines()))
             # print(kwargs)
-        def value(key, value):
-            return kwargs.get(key, value)
-        self.global_speed = value("global_speed", 1)
-        self.loud_speed = value("loud_speed", 1)
+        def value(key):
+            return kwargs.get(key, TRIVIAL_DICT[key])
+        self.global_speed = value("global_speed")
+        self.loud_speed = value("loud_speed")
                 # accelerating loud  parts of video/audio
-        self.quiet_speed = value("quiet_speed", 1)
+        self.quiet_speed = value("quiet_speed")
         #print(self.quiet_speed)
                 # accelerating quiet parts of video/audio
-        self.min_quiet_time = value("min_quiet_time", 0.4) # in seconds
-        self.max_quiet_time = value("max_quiet_time", 10)  # in seconds
-        self.sound_threshold = value("sound_threshold", 0.02)
+        self.min_quiet_time = value("min_quiet_time") # in seconds
+        self.max_quiet_time = value("max_quiet_time")  # in seconds
+        self.sound_threshold = value("sound_threshold")
                 # minimal loud sound
-        self.volume_cooficient = value("volume_cooficient", 1) 
-        self.quiet_volume_cooficient = value("quiet_volume_cooficient", 1)
-        self.loud_volume_cooficient = value("loud_volume_cooficient", 1)
-        self.max_volume = value("max_volume", 1)  #maximal able volume
+        self.volume_cooficient = value("volume_cooficient") 
+        self.quiet_volume_cooficient = value("quiet_volume_cooficient")
+        self.loud_volume_cooficient = value("loud_volume_cooficient")
+        self.max_volume = value("max_volume")  #maximal able volume
         
-        self.resize = value("video_fps", 0.1)   # number to decrease image
-        self.brightness = value("brightness", 0)
-        self.contras_ratio = value("contras_ratio", 1)
-        self.rotate_image = value("video_fps", 0)  # 0-3 (image angle)/90
-        self.inverted = value("video_fps", False)  
+        self.decrease = value("decrease")   # number to decrease image
+        self.brightness = value("brightness")
+        self.contras_ratio = value("contras_ratio")
+        self.rotate_image = value("rotate_image")  # 0-3 (image angle)/90
+        self.inverted = value("inverted")  
                 # invertion relative to vertical axis
     
     def set_global_speed(self, value):
@@ -103,8 +119,6 @@ class Settings:
         self.loud_speed = abs(value)
 
     def get_loud_speed(self):
-        # print("eeeeeee")
-        # print(self.loud_speed)
         return self.loud_speed  # * self.global_speed
     
     def set_quiet_speed(self, value):
@@ -155,11 +169,11 @@ class Settings:
     def get_max_volume(self):
         return self.max_volume
 
-    def set_resize(self, value):
-        self.resize = abs(value)
+    def set_decrease(self, value):
+        self.decrease = abs(value)
 
-    def get_resize(self):
-        return self.resize
+    def get_decrease(self):
+        return self.decrease
 
     def get_brightness(self):
         return self.brightness
@@ -187,7 +201,7 @@ class Settings:
     def get_inverted(self):
         return self.inverted
     
-    def to_dict(self):
+    def full_dict(self):
         """convert self to dict
         for inverse operation use smth = Settings(**dictionary)"""
         return {
@@ -201,12 +215,22 @@ class Settings:
             'quiet_volume_cooficient': self.get_quiet_volume_cooficient(),
             'loud_volume_cooficient': self.get_loud_volume_cooficient(),
             'max_volume': self.get_max_volume(),
-            'resize': self.get_resize(),
+            'decrease': self.get_decrease(),
             'brightness': self.get_brightness(),
             'contras_ratio': self.get_contras_ratio(),
             'rotate_image': self.get_rotate_image(),
             'inverted': self.get_inverted(),
             }
+
+    def __getitem__(self, key):
+        return self.full_dict()[key]
+
+    def to_dict(self):
+        full_dict, part_dict = self.full_dict(), {}
+        for elem in full_dict:
+            if full_dict[elem] != TRIVIAL_DICT[elem]:
+                part_dict[elem] = full_dict[elem]
+        return part_dict
 
     def __str__(self):
         d = self.to_dict()
@@ -214,7 +238,7 @@ class Settings:
         return  "Settings({})".format(temp)
 
     def save_to_file(self, filepath):
-        """save self to filepath"""
+        """Save self to filepath"""
         if not filepath.endswith("." + SETTING_EXTENTION):
             filepath += "." + SETTING_EXTENTION
         with open(filepath, "w") as f:
@@ -229,6 +253,9 @@ class Settings:
             raise TypeError(message.format(new_settings, type(new_settings)))
         self = new_settings
 
+    def is_trivial(self):
+        return not bool(self.to_dict())
+
     
 
 """
@@ -237,10 +264,11 @@ Settings().save_to_file(r"settings/usual_speeding")
 Settings(volume_cooficient=0).save_to_file(r"settings/no_sound")
 print("end")
 r"""
-#filepath = r"C:\Users\m\Desktop\PythonProjects\SmartAccelerator\2.1.0\no_sound.SVA_parameters"
-#s = Settings(volume_cooficient = 0)
-#s.save_to_file(filepath)
-#t = Settings(filepath=filepath)
-#print(str(t)) """
+# filepath = r"C:\Users\m\Desktop\PythonProjects\SmartAccelerator\2.1.0\no_sound.SVA_parameters"
+# s = Settings(volume_cooficient = 0)
+# print(s)
+# s.save_to_file(filepath)
+# t = Settings(filepath=filepath)
+# print(str(t)) """
 
         

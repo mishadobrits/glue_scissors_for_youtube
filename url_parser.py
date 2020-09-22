@@ -77,16 +77,28 @@ def process_str(s, folder, chunk=5):
 
     if it != dur:
         # print(f"last {it, dur}")
-        stream.save_part(it, dur, folder, file_counter)        
+        stream.save_part(it, dur, folder, file_counter)
+    print(f"Task '{s}' sucssesfully completed")
 
-r"""
+
+def bad_code_read_one_line_from_test_txt_and_process_it():
+    with open("test.txt") as f:
+        s = f.readline()
+    print(s)
+    # s = f"VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromImageURL('{image_url}', 7)"
+    name = "108"
+    folder = r"C:\Users\m\Desktop\PythonProjects\YouTube_GlueAndScissors\Code\glue_scissors_for_youtube\video\{}/".format(name)
+    print(folder)
+    process_str(s, folder, chunk=30 * 60)
+
+
+bad_code_read_one_line_from_test_txt_and_process_it()
+
+# r"""
 # image_url = r"https://img2.akspic.ru/image/88423-burdzh_halifa-neboskreb-vyshka-zdanie-liniya_gorizonta-1920x1200.jpg"
 # s = "VideoFromYoutubeURL('2WemzwuAQF4')[56: 63, 66: 69]/ VideoFromYoutubeURL('qiZLHchtX8c')[239:249](volume_cooficient = 1.2)"
-s = r"VideoFromText('Подборка самых\nжизненных фраз\nOneTwo', 3) + VideoFromYoutubeURL('KWbANha2iws')[307:309, 307:309:0.66](volume_cooficient=0) + VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromYoutubeURL('U3-6jv0NCkk')[206:212] +  VideoFromYoutubeURL('A8Fon7DWho4')[65:69]"
-s = r"VideoFromYoutubeURL('KWbANha2iws')[307:309, 307:309:0.66](volume_cooficient=0) + VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromYoutubeURL('U3-6jv0NCkk')[206:212] +  VideoFromYoutubeURL('A8Fon7DWho4')[65:69]"
-# s = f"VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromImageURL('{image_url}', 7)"
-folder = r"C:\Users\m\Desktop\PythonProjects\YouTube_GlueAndScissors\Code\glue_scissors_for_youtube\video\104/"
-process_str(s, folder) # """
+# s = r"VideoFromText('Подборка самых\nжизненных фраз\nOneTwo', 3) + VideoFromYoutubeURL('KWbANha2iws')[307:309, 307:309:0.66](volume_cooficient=0) + VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromYoutubeURL('U3-6jv0NCkk')[206:212] +  VideoFromYoutubeURL('A8Fon7DWho4')[65:69]"
+ # """
 
 """
 temp = videos.VideoFromYoutubeURL('V1sRabJhGWs')
@@ -97,4 +109,4 @@ v4 = v3 / temp[0:25]
 v5 = v4(volume_cooficient=0)
 for v in [v1, v2, v3, v4, v5]:
     # print(v.short_str())
-    print(to_url(v))   # """
+    print(to_url(v))   #https://youtu.be/1at7kKzBYxI """
