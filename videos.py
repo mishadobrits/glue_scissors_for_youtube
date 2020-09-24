@@ -935,7 +935,8 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
                 frames_len += 1
                 videowriter.write(cur_frame)
 
-            sound = part['sound'][:, 0] * (2 ** 16 - 1)
+            
+            sound = part['sound'][:, 0] * 2 ** 15
             sound = np.repeat(sound, 2).astype(int).reshape((-1, 2))
             sound_len += sound.shape[0]
             audiowriter.writeframes(sound.tobytes())
