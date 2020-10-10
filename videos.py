@@ -380,7 +380,7 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
             try:
                 link = r"https://www.youtube.com/watch?v=" + self.video_id
                 super().__init__(get_stream_url(self.video_id))
-                print(f"({self.id}): Video {self.video_id} sucssesfuly loaded")
+                print(f"({self.id}): Video '{self.video_id}' sucssesfuly loaded")
                 break
             except OSError as e:
                 if i == n - 1:
@@ -401,21 +401,31 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
             except OSError:
                 import copy
                 self = copy.deepcopy(self)
+                print("OSERROR")
                 return func(self, *args, **kwargs)
         return wrapper
 
+    def _check_connection_decorator(func):
+        def wrapper(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except IndexError:
+                self = self.__deepcopy__()
+                return func(self, *args, **kwargs)
+        return wrapper
+    
+    @_check_connection_decorator
     @_download_webm_decorator
     def get_frame(self, t):
-        # print(f"get_frame calling {self.id}")
         t = self.get_frame_time(t)
         return super().get_frame(t) 
 
     def get_frame_time(self, time):
         return time - time % (1 / VIDEO_FPS)
 
+    @_check_connection_decorator
     @_download_webm_decorator
     def get_nextsound(self, time):
-        # print("get_nextsound calling")
         end_time = time + 1 / VIDEO_FPS
         self.last_asked_time = end_time
         
@@ -426,7 +436,6 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
     
     # @_download_webm_decorator
     def get_duration(self):
-        # print("get_duration calling")
         if self.duration == -1:
             msg = ''' .But you don't point out duration in
                          {}.__init__({}, {}). It trror may be raised if int
@@ -456,7 +465,6 @@ class VideoFromImage(Video):          #  Use 'hDygGaJlAH' for search
         self.image = image
         self.duration = duration
         self.sound_channels = sound_channels
-        # print(image, duration)
 
     @Video.check_time_decorator
     def get_nextsound(self, t):
@@ -532,7 +540,6 @@ class VideoFromImageURL(VideoFromImage):   #  Use 'f5vfFwOTVd' for search
                     raise e
         if i:
             print(f"Image sucseddfully downloaded in {i+1} attemps")
-        # im.show()
         ndarr = np.array(im)
         super().__init__(ndarr, duration, sound_channels)
         
@@ -622,7 +629,6 @@ class SumOfVideo(Video):              #  Use 'Ci1lua3fAb' for search
         for elem in self.videos_list[:-1]:
             self.start_times.append(self.start_times[-1] + elem.get_duration())
         self.is_downloaded = [False] * len(videos_list)
-        # print(self.durations)
 
     @Video.check_time_decorator
     def _get_index_and_time(self, time):
@@ -646,7 +652,6 @@ class SumOfVideo(Video):              #  Use 'Ci1lua3fAb' for search
     def get_frame(self, time):
         index, video_time = self._get_index_and_time(time)
         self.set_users_cur_viewing_time(index, video_time)
-        # print(index, video_time)
         return self.videos_list[index].get_frame(video_time)
 
     @Video.check_time_decorator
@@ -750,7 +755,6 @@ class SeparatedVideoAndAudio(Video):  #  Use '0uceFGY5J0' for search
 
     @Video.check_time_decorator
     def get_nextsound(self, time):
-        # print(self.sound_video, self.sound_video.get_nextsound(time))
         return self.sound_video.get_nextsound(time)
 
     @Video.check_time_decorator
@@ -797,7 +801,6 @@ class SmartAcceleratedVideo(Video):   #  Use '89FAQvklsC' for search
             self.last_loud_time = time
         if time - self.last_loud_time < s.get_min_quiet_time():
             k = s.get_loud_speed() * s.get_global_speed()
-            # print(f"k: {k}")
             sound = sound * s.get_loud_volume_cooficient()
         elif time - self.last_loud_time > s.get_max_quiet_time():
             k = 10 ** 10
@@ -807,9 +810,8 @@ class SmartAcceleratedVideo(Video):   #  Use '89FAQvklsC' for search
         k = abs(k) if k else 1
             
         sound = squeeze_sound(sound, k)
-        # print(k, len(sound))
-        sound = np.minimum(sound, s.get_max_volume())
-        sound = np.maximum(sound, -s.get_max_volume())
+        max_sound = min(s.get_max_volume(), 1)
+        sound = np.maximum(np.minimum(sound, max_sound), -max_sound)
         sound = np.float32(sound * s.get_volume_cooficient())
         return {'end time': part['end time'], 'sound': sound}
 
@@ -891,17 +893,18 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
                     raise TypeError(str_to_error_message(msg))
             return True
 
-        class FakeClass:
-            def release(self): pass
-
-            def close(self): pass
 
         def get_abs_max(n2array):
             first, second = n2array[:, 0], n2array[:, 1]
             indexes = (np.abs(first) > np.abs(second)).astype(int)
             return first * indexes + second * (1 - indexes)
 
-        audiowriter, videowriter = FakeClass(), FakeClass()
+        class FakeClass():
+            def close(self): pass
+
+            def get_real_time(self): return 0
+
+        mediawriter = FakeClass()
         last_shape, last_time = (-1, -1, 3), -1
         
         sound_len, frames_len = 0, 0
@@ -910,41 +913,24 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
         while eval(condition):
             cur_frame = self.video.get_frame(cur_time)[:, :, ::-1]
             if int(cur_time / 60) > int(last_time / 60):
-                print(f"Start saving {int(cur_time / 60)} minute")
+                print(f"Start saving {int(cur_time / 60)} minute - real time: {mediawriter.get_real_time()}")
                 last_time = cur_time
             
             part = self.video.get_nextsound(cur_time)
             check_type(part)
 
             if cur_frame.shape != last_shape:
-                last_shape = cur_frame.shape
-                videowriter.release(); audiowriter.close()
+                mediawriter.close()
+                
+                last_shape = cur_frame.shape                     
                 path = f"{folder}{filecounter}"
-                # print("calling save audio", filecounter)
-                # save_audio(sound[:-1], f"{folder}{filecounter}.mp3")
                 filecounter += 1
-                videowriter = VideoWriter(f"{folder}{filecounter}.mp4", -1,
-                                          VIDEO_FPS, cur_frame.shape[1::-1])
+                mediawriter = MediaWriter(path, last_shape)
                 
-                audiowriter = wave.open(f"{folder}{filecounter}.wav", "w")
-                audiowriter.setnchannels(4)
-                audiowriter.setsampwidth(2)
-                audiowriter.setframerate(AUDIO_FPS)
-                
-            while sound_len / AUDIO_FPS > frames_len / VIDEO_FPS:
-                frames_len += 1
-                videowriter.write(cur_frame)
-
-            
-            sound = part['sound'][:, 0] * 2 ** 15
-            sound = np.repeat(sound, 2).astype(int).reshape((-1, 2))
-            sound_len += sound.shape[0]
-            audiowriter.writeframes(sound.tobytes())
-            
+            mediawriter.write_audio_and_picture(part['sound'], cur_frame)
             cur_time = part['end time']
         
-        videowriter.release(); audiowriter.close()
-        # print(f"{sound_len} = {AUDIO_FPS} * {sound_len / AUDIO_FPS}")
+        mediawriter.close()
         return filecounter
     
     def save_part(self, start_time, end_time, folder, outputname):
@@ -970,3 +956,57 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
 
     def __str__(self):
         return self.long_str()
+
+        
+class MediaWriter:
+    def __init__(self, filename, picture_shape):
+        self.filename = filename
+        self.outputname = f"{filename}.avi"
+        self.videoname = f"{filename}_TEMP.mp4"
+        self.audioname =  f"{filename}_TEMP.wav"
+
+        self.videowriter = VideoWriter(self.videoname, -1, VIDEO_FPS, picture_shape[1::-1])
+        self.audiowriter = wave.open(self.audioname, "w")
+        self.audiowriter.setnchannels(4)
+        self.audiowriter.setsampwidth(2)
+        self.audiowriter.setframerate(AUDIO_FPS)
+
+        self.sound_len, self.pictures = 0, 0
+
+    def close(self):
+        import os
+        import subprocess
+        
+        self.videowriter.release()
+        self.audiowriter.close()
+        try:
+            os.unlink(self.outputname)
+        except FileNotFoundError:
+            pass
+
+        cmd = f'ffmpeg -i {self.videoname} -i {self.audioname} -c copy {self.outputname}'
+
+        subprocess.call(cmd, shell=True)
+        print("Video created: ", end = "")
+
+        os.unlink(self.videoname)
+        os.unlink(self.audioname)
+        print("temp files deleted")
+
+    def _write_picture(self, picture):
+        self.pictures += 1
+        self.videowriter.write(picture)
+
+    def _write_audio(self, audio_n2_float_array):
+        sound = audio_n2_float_array[:, 0] * 2 ** 15
+        sound = np.repeat(sound, 2).astype(int).reshape((-1, 2))
+        self.sound_len += sound.shape[0]
+        self.audiowriter.writeframes(sound.tobytes())
+
+    def write_audio_and_picture(self, audio_n2float_array, picture):
+        self._write_audio(audio_n2float_array)
+        while self.sound_len / AUDIO_FPS > self.pictures / VIDEO_FPS:
+            self._write_picture(picture)
+
+    def get_real_time(self):
+        return self.pictures / VIDEO_FPS
