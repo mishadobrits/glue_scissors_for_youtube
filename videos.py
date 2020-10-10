@@ -48,13 +48,13 @@ You can create this types of video
     SumOfVideo             # or video1 + video2  #  Use '0kxprGdgk8' for search
     SeparatedVideoAndAudio # or video1 / video2  #  Use 'iPgx8iCcdC' for search
     PartOfVideo            # or video1[start:end]#  Use '1U9YldMWW2' for search
-    SmartAcceleratedVideo  # or video1[kwargs]   #  Use '89FAQvklsC' for search
+    VideoSettings  # or video1[kwargs]   #  Use '89FAQvklsC' for search
     PartsOfOneVideo        # or video1[slice1, slice2, ...] #  Use 'GnJ70Y0u1v' for search
 
 #Import:
 from videos import VideoFromYoutubeURL, VideoFromImageURL, VideoFromText
 # from videos import (SumOfVideo, SeparatedVideoAndAudio,
-#                     PartOfVideo, SmartAcceleratedVideo)
+#                     PartOfVideo, VideoSettings)
 
 
 horror = VideoFromYoutubeURL("https://www.youtube.com/watch?v=qiZLHchtX8c")
@@ -78,7 +78,7 @@ rev9_3s = rev9[66: 69](speed=0.9, volume_cooficient=1.2)
 # In all classes __init__ mathod copy video arguments, so in
 # rev9_11s = rev9_8s + rev9_3s, rev9 woll loads twice 
 # It is the same
-# rev9_3s = SmartAcceleratedVideo(VideoFromYoutubeURL("2WemzwuAQF4")[66: 69],
+# rev9_3s = VideoSettings(VideoFromYoutubeURL("2WemzwuAQF4")[66: 69],
 #                                 Settings(speed=0.9, volume=1.2))
 
 # You can contencate videos.   #  Use '0kxprGdgk8' for search
@@ -122,7 +122,7 @@ Classes tree:
 │ '''if isistance(v1, Video) and isistance(v2, Video) then'
 │    v1[start1:end1, start2:end2, ...] = PartsOfOneVideo(v1, slices_tuple)
 │    v1[start_time:end_time] = PartOfVideo(v1, start_time, end_time) 
-│    v1(**kwargs) = SmartAcceleratedVideo(v1, Settings(kwargs))
+│    v1(**kwargs) = VideoSettings(v1, Settings(kwargs))
 │    v1 + v2 = SumOfVideo((v1, v2))
 │    v1 / v2 = SeparatedVideoAndAudio(video=v1, audio=v2)
 │ '''┌┘                        ║
@@ -146,7 +146,7 @@ Classes tree:
 │    │     
 │    ├─SeparatedVideoAndAudio       #  Use '0uceFGY5J0' for search  
 │    │                               
-│    └─SmartAcceleratedVideo        #  Use '89FAQvklsC' for search│
+│    └─VideoSettings        #  Use '89FAQvklsC' for search│
 │ 
 └VideoSaveStream               #  Use 'FwLJImGxRF' for search
 
@@ -187,7 +187,7 @@ class Video:    #  Use 'POFvmLHWHg' for search
         v1[start1:end1, start2:end2, ...] = PartsOfOneVideo(v1, slices_tuple)
         v1 * number = v1[(:: for _ in range(n))] 
         v1 + v2 = SumOfVideo((v1, v2))
-        v1(**kwargs) = SmartAcceleratedVideo(v1, Settings(kwargs))
+        v1(**kwargs) = VideoSettings(v1, Settings(kwargs))
         v1 / v2 = SeparatedVideoAndAudio(video=v1, audio=v2).
     
     All classes inherid of <class Video> must overload
@@ -229,9 +229,10 @@ class Video:    #  Use 'POFvmLHWHg' for search
         elif isinstance(arg, tuple) and all(isinstance(e, slice) for e in arg):
             return PartsOfOneVideo(self, arg)
         
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, sound_threshold=0, **kwargs):
+        # sound_threshold=0 - for SAV0 only
         """
-        Create SmartAcceleratedVideo(self, Settings(**dict)) where 'dict' is
+        Create VideoSettings(self, Settings(**dict)) where 'dict' is
             if not args:
                 dict = kwargs
             if args is (settings_obj):
@@ -250,7 +251,8 @@ class Video:    #  Use 'POFvmLHWHg' for search
             msg = '''Video(*args, **kwargs) takes 0 or 1 arguments in *args
                      Video(*{}, **{}) were given'''.format(args, kwargs)
             raise TypeError(str_to_error_message(msg))
-        return SmartAcceleratedVideo(self, Settings(**settings_dict))
+        
+        return SAV0(self, Settings(**settings_dict), sound_threshold)
             
 
     def get_nextsound(self, *args, **kwargs): #  Use 'mrQvXrhkKg' for search
@@ -775,29 +777,26 @@ class SeparatedVideoAndAudio(Video):  #  Use '0uceFGY5J0' for search
         return self.long_str()
 
 
-class SmartAcceleratedVideo(Video):   #  Use '89FAQvklsC' for search
+class VideoSettings(Video):   #  Use '89FAQvklsC' for search
     """
     Video that plays the silent and loud parts at different speeds.
     Look <class Settings> for info about options
     """
     @Video.deepcopy_video_decorator
-    def __init__(self, video, settings):
+    def __init__(self, video, settings, is_loud_func=lambda sound: True):
         self.video = video
         self.settings = settings
         self.last_loud_time = 0
-        """
-        if settings.is_trivial():
-            self = video
-            print(type(self), type(video))"""
-    
+        self.is_loud_func = is_loud_func
+
+
     def get_nextsound(self, time):
         s = self.settings
         
         part = self.video.get_nextsound(time)
         sound = part['sound']
-        cur_max = sound.max()
         
-        if cur_max > s.get_sound_threshold() or self.last_loud_time > time:
+        if self.is_loud_func(sound) or self.last_loud_time > time:
             self.last_loud_time = time
         if time - self.last_loud_time < s.get_min_quiet_time():
             k = s.get_loud_speed() * s.get_global_speed()
@@ -814,6 +813,7 @@ class SmartAcceleratedVideo(Video):   #  Use '89FAQvklsC' for search
         sound = np.maximum(np.minimum(sound, max_sound), -max_sound)
         sound = np.float32(sound * s.get_volume_cooficient())
         return {'end time': part['end time'], 'sound': sound}
+
 
     def get_frame(self, time):
         im = self.video.get_frame(time)
@@ -838,6 +838,12 @@ class SmartAcceleratedVideo(Video):   #  Use '89FAQvklsC' for search
 
     def __str__(self):
         return self.long_str()
+
+
+class SAV0(VideoSettings):
+    def __init__(self, video, settings, sound_threshold=0.1):
+        is_loud_func = lambda sound: sound.max() > sound_threshold
+        super().__init__(video, settings, is_loud_func=is_loud_func)
 
 
 class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
@@ -877,7 +883,6 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
         self.h = height if height != -1 else frame.shape[0]
         self.video.get_nextsound(0)
 
-    # @print_time
     def _save_part(self, start_time, folder, filecounter,
                    condition="cur_time < end_time"):
         def check_type(part):
