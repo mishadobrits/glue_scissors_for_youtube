@@ -1,10 +1,10 @@
-from moviepy.editor import VideoFileClip
 from pafy import new as pafy_new
-from filedict import FileDict
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageColor
+import threading
 
-url = 'http://youtube.com/watch?v=iwGFalTRHDA'
+
+def empty_func(): pass
 
 
 def in_new_thread(function):
@@ -24,6 +24,7 @@ def in_new_thread(function):
 def print_time(func):
     from functools import wraps
     wraps(func)
+
     def wrapper(*args, **kwargs):
         from time import time
         start_time = time()
@@ -31,10 +32,8 @@ def print_time(func):
         end_time = time()
         
         msg = "function {} (args = {}, kwargs = {}) takes {} seconds"
-        # print("time", end_time - start_time)
         print(msg.format(func.__name__, args, kwargs, end_time - start_time))
         return rt
-    #print("func", func, "func")
     wrapper.__name__ = "print_time({}).wrapper".format(func.__name__)
     return wrapper
 
@@ -51,6 +50,7 @@ def str_to_error_message(msg):
 def squeeze_sound(sound, x=1):
     sound_slice = np.arange(0, sound.shape[0] - 0.5, x).astype(int)
     return sound[sound_slice]
+
 
 # @print_time
 def image_to_new_size(image, new_w, new_h):
@@ -71,6 +71,7 @@ def image_to_new_size(image, new_w, new_h):
 
     return black
 
+
 def image_from_text(text, bg="black", fg="white", font="arial",
                     letter_size=40, align="center", indent=5, up_indent=-1,
                     right_indent=-1, down_indent=-1, left_indent=-1):
@@ -81,7 +82,7 @@ def image_from_text(text, bg="black", fg="white", font="arial",
     ----bg="black", fg="white - background and frontground color
              in im_type format. You can use tuple in 'RGB' format.
              for example (0, 0, 0) - black in 'RGB'.
-    ----font="arial" - text font. Must be one of PIL fonts.
+    ----font="arial" (can be )
     ----letter_size=40 - size of one letter
     ----align="center"(or "left" or "right") - aling of text
     ----indent=5 - defoult indent
@@ -94,7 +95,8 @@ def image_from_text(text, bg="black", fg="white", font="arial",
     except Exception as e:
         print(e)
         raise ValueError(f'image_from_text(...) takes wrong front {font}.ttf')
-    def check_color_existance(arg):
+
+    def check_color_existence(arg):
         if isinstance(arg, str):
             try:
                 ImageColor.getcolor(arg, "RGB")
@@ -110,8 +112,8 @@ def image_from_text(text, bg="black", fg="white", font="arial",
                       type({arg}) = {type(arg)} were given'''
             raise ValueError(str_to_error_message(msg))
 
-    check_color_existance(bg)
-    check_color_existance(fg)
+    check_color_existence(bg)
+    check_color_existence(fg)
 
     im = Image.new("RGB", (1000, 1000), color=bg)
     bg_only = np.array(im)
@@ -147,3 +149,28 @@ def image_from_text(text, bg="black", fg="white", font="arial",
     # Image.fromarray(rt).show()
     return rt
 
+
+def ignore_exceptions_decorator_maker(exceptions_expression=Exception, exception_func=empty_func):
+    def ignore_exceptions_decorator(func):
+        def wrapper(*args, **kwargs):
+            try:
+                func(*args, **kwargs)
+            except exceptions_expression:
+                return exception_func()
+        return wrapper
+    return ignore_exceptions_decorator
+
+
+class StoppableThread(threading.Thread):
+    """Thread class with a stop() method. The thread itself has to check
+    regularly for the stopped() condition."""
+
+    def __init__(self,  *args, **kwargs):
+        super(StoppableThread, self).__init__(*args, **kwargs)
+        self._stop_event = threading.Event()
+
+    def stop(self):
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()

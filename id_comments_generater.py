@@ -22,6 +22,7 @@ def get_id_comment(numb=1,
     return ["#  Use '{}' for search".format(get_id()) for _ in range(numb)]
 
 
+print(get_id_comment(1)[0])
 l = get_id_comment(numb=int(input("input number of rands(for exmaple 1): ")))
 print("\n".join(l))
     # {}{}{}_{}{}{}_{}{}{} 

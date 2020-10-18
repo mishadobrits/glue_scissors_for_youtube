@@ -1,7 +1,6 @@
 import videos
 from videos import (VideoFromYoutubeURL, VideoFromImageURL, VideoFromText,
                     VideoFromFrameFromYoutubeVideo, VideoSaveStream)
-from filedict import FileDict
 from functions import in_new_thread
 
 
@@ -84,12 +83,12 @@ def process_str(s, folder, chunk=5):
 def bad_code_read_one_line_from_test_txt_and_process_it():
     with open("test.txt") as f:
         s = f.readline()
-    print(s)
+    print("s:", s)
     # s = f"VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromImageURL('{image_url}', 7)"
     name = "108"
     folder = r"C:\Users\m\Desktop\PythonProjects\YouTube_GlueAndScissors\Code\glue_scissors_for_youtube\video\{}/".format(name)
     print(folder)
-    process_str(s, folder, chunk=30 * 60)
+    process_str(s, folder, chunk=5 * 60 * 60)
 
 
 bad_code_read_one_line_from_test_txt_and_process_it()

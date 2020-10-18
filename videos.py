@@ -1,6 +1,17 @@
+from moviepy.editor import VideoFileClip
+from cv2 import VideoWriter
+from settings import Settings
+from functions import (in_new_thread, str_to_error_message, get_stream_url,
+                       print_time, squeeze_sound, StoppableThread,
+                       image_from_text, ignore_exceptions_decorator_maker)
+import numpy as np
+from bisect import bisect_right
+from PIL import Image
+from urllib.request import urlopen
+import wave
 
-#todo
-#videos.py
+
+# videos.py
 """use for comments"""
 '''use for stings'''
 """
@@ -21,16 +32,16 @@ Idea:
     video = ... # creating video  #  Use 'HglSFYJDDE' for search
 
     # 2)
-    stream = VideoStream(video, width, height)
+    stream = VideoSaveStream(video, width, height)
     
     # 3) When you need get next n seconds of result video.
-    stream.save_n_seconds(start_time, n, outputname):
+    stream.save_n_seconds(start_time, n, outputname, counter):
     # in file named output_name_withonut_extension.mp4 yours video part
     # in file named output_name_withonut_extension.mp3 yours audio part
                  #
     ############### OR #####################
                  #
-    stream.save_part(start_time, end_time, outputname):
+    stream.save_part(start_time, end_time, outputname, counter):
     # save frames of video[start_time: end_time] in outputname + ".mp4"
     # save sound of video[start_time: end_time] in outputname + ".mp3"
     
@@ -38,7 +49,7 @@ Idea:
 
 
 
-Creating video: #  Use 'HglSFYJDDE' for search
+Creating video:   #  Use 'HglSFYJDDE' for search
 You can create this types of video
     VideoFromYoutubeURL   !!!!!      #  Use 'j7ItYy3N2n' for search
     VideoFromImageURL                #  Use 'fjR1wW8o9d' for search
@@ -48,7 +59,7 @@ You can create this types of video
     SumOfVideo             # or video1 + video2  #  Use '0kxprGdgk8' for search
     SeparatedVideoAndAudio # or video1 / video2  #  Use 'iPgx8iCcdC' for search
     PartOfVideo            # or video1[start:end]#  Use '1U9YldMWW2' for search
-    VideoSettings  # or video1[kwargs]   #  Use '89FAQvklsC' for search
+    VideoSettings          # or video1[kwargs]   #  Use '89FAQvklsC' for search
     PartsOfOneVideo        # or video1[slice1, slice2, ...] #  Use 'GnJ70Y0u1v' for search
 
 #Import:
@@ -156,30 +167,13 @@ Also All Video classes have __str__ method.
 
 """
 
+AUDIO_FPS = 44100
+VIDEO_FPS = 24
+PRELOAD_FOR_SUM_OF_VIDEO = 10
+WAIT_ONE_REQUEST_IN_SECONDS = 60
 
 
-from moviepy.editor import VideoFileClip
-from moviepy.audio.AudioClip import AudioArrayClip
-from cv2 import VideoWriter
-from settings import Settings
-from pafy import new as pafy_new
-from functions import (in_new_thread, str_to_error_message, get_stream_url,
-                       print_time, squeeze_sound, image_to_new_size,
-                       image_from_text)
-from filedict import FileDict
-import numpy as np
-from bisect import bisect_right
-from PIL import Image
-from urllib.request import urlopen
-import wave
-
-
-constants = FileDict("constants")
-AUDIO_FPS = constants.get_and_write("AUDIO_FPS", 44100)
-VIDEO_FPS = constants.get_and_write("VIDEO_FPS", 25)
-# print(VIDEO_FPS)
-
-class Video:    #  Use 'POFvmLHWHg' for search
+class Video:    # Use 'POFvmLHWHg' for search
     """
     Base video class.
     Contain 
@@ -229,33 +223,28 @@ class Video:    #  Use 'POFvmLHWHg' for search
         elif isinstance(arg, tuple) and all(isinstance(e, slice) for e in arg):
             return PartsOfOneVideo(self, arg)
         
-    def __call__(self, *args, sound_threshold=0, **kwargs):
-        # sound_threshold=0 - for SAV0 only
+    def __call__(self, alg="SAV0", *args, **kwargs):
         """
-        Create VideoSettings(self, Settings(**dict)) where 'dict' is
-            if not args:
-                dict = kwargs
-            if args is (settings_obj):
-                dict = settings_obj.to_dict().update(kwargs)        
+        Create
+            if alg == "SAV0"
+                SAV0(self, VideoSettings(*args_without_sound_threshold, **kwargs), sound_threshold=0)
+            ... (On this moment it is only one algorithm selecting voice from audio - SAV0)
         """
-        if not args:
-            settings_dict = kwargs  
-        elif len(args) == 1 and isinstance(args[0], Settings):
-            settings_dict = args[0].to_dict()
-            settings_dict.update(kwargs)
-        elif len(args) == 1:
-            msg = '''arg in Video(arg, **kwargs) must be <class Settings>
-                    type type({}) = {} were given'''.format(arg, type(arg))
-            raise TypeError(str_to_error_message(msg))
-        else: 
-            msg = '''Video(*args, **kwargs) takes 0 or 1 arguments in *args
-                     Video(*{}, **{}) were given'''.format(args, kwargs)
-            raise TypeError(str_to_error_message(msg))
-        
-        return SAV0(self, Settings(**settings_dict), sound_threshold)
-            
+        if alg.upper() == "SAV0":
+            if len(args) == 1 and isinstance(args[0], Settings):
+                settings_dict = args[0].to_dict()
+            elif not args:
+                settings_dict = {}
+            else:
+                msg = '''in calling Video(alg="SAV0", *args, **kwargs): You can use
+                         Video(alg="SAV0", **settings_dict) or Video(alg="SAV0", settings, **settings_dict), but
+                         Video(*{}, **{}) were given'''.format(args, kwargs)
+                raise TypeError(str_to_error_message(msg))
 
-    def get_nextsound(self, *args, **kwargs): #  Use 'mrQvXrhkKg' for search
+            settings_dict.update(kwargs)
+            return SAV0(self, Settings(**settings_dict), settings_dict.get("sound_threshold", 0))
+
+    def get_nextsound(self, *args, **kwargs):  # Use 'mrQvXrhkKg' for search
         """
         Overloaded 'get_nextsound(self, time)' method must generate
         chunk of video after 'time'.
@@ -270,10 +259,9 @@ class Video:    #  Use 'POFvmLHWHg' for search
         """
         msg = '''All classes inherited of {} must overload '{}' method;
                  #  Use 'mrQvXrhkKg' for search in videos.py'''
-        msgstr_to_error_message(msg.fotmat(__class__, "get_nextsound"))
-        raise Exception(msg)
+        raise Exception(str_to_error_message(msg.fotmat(__class__, "get_nextsound")))
     
-    def get_frame(self, *args, **kwargs): #  Use '0t1SPHSW8B' for search
+    def get_frame(self, *args, **kwargs): # Use '0t1SPHSW8B' for search
         """
         Overloaded 'get_frame' method must takes time in arg 
         and return frame in that time.
@@ -283,7 +271,7 @@ class Video:    #  Use 'POFvmLHWHg' for search
         msg = str_to_error_message(msg.format(__class__, "get_frame"))
         raise Exception(msg)
 
-    def get_duration(self):       #  Use 'Ani5kkF30f' for search
+    def get_duration(self):       # Use 'Ani5kkF30f' for search
         """
         Function that return duration of video.
         You need overload it if you use SumOfVideo for your type
@@ -314,11 +302,14 @@ class Video:    #  Use 'POFvmLHWHg' for search
         return wrapper
 
     def __str__(self):
-        try:
+        if "short_str" in dir(self):
             return self.short_str()
-        except AttributeError:
+        else:
             return object.__str__(self)
+
+
 Video.id = 0
+
 
 class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for search
     """
@@ -374,9 +365,10 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
             while not self.is_downloaded:
                 time.sleep(0.01)
             return
-                
+        self.load()
+
+    def load(self):
         self.start_downloading = True
-        # loading
         n = 10
         for i in range(n):
             try:
@@ -396,36 +388,42 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
         self.start_downloading = False
 
     def _download_webm_decorator(func):
-        def wrapper(self, *args, **kwargs):
-            self.download_webm()
-            try:
-                return func(self, *args, **kwargs)
-            except OSError:
-                import copy
-                self = copy.deepcopy(self)
-                print("OSERROR")
-                return func(self, *args, **kwargs)
-        return wrapper
+        def wrapper(*args, **kwargs):
+            self = args[0]
+            rt, is_func_finished = -1, False
 
-    def _check_connection_decorator(func):
-        def wrapper(self, *args, **kwargs):
-            try:
-                return func(self, *args, **kwargs)
-            except IndexError:
-                self = self.__deepcopy__()
-                return func(self, *args, **kwargs)
+            @ignore_exceptions_decorator_maker()
+            def super_calling_func(*args, **kwargs):
+                nonlocal rt, is_func_finished
+                rt = func(*args, **kwargs)
+                is_func_finished = True
+
+            for attempt in range(10):
+                stoppable_thread = StoppableThread(target=super_calling_func, args=args, kwargs=kwargs)
+                stoppable_thread.start()
+                stoppable_thread.join(5)
+                stoppable_thread.stop()
+                if is_func_finished:
+                    return rt
+                print(f"Asking {func.__name__}(*{args}, **{kwargs}) {attempt + 1} attempt: wait to long.", end=" ")
+                print("Trying to reload video:", end=" ")
+                try:
+                    self.load()
+                    print("Video successfully reloaded")
+                except:
+                    print("Video don't loaded")
+                    pass
         return wrapper
     
-    @_check_connection_decorator
     @_download_webm_decorator
     def get_frame(self, t):
+        # print(f"asking time: {t}")
         t = self.get_frame_time(t)
         return super().get_frame(t) 
 
     def get_frame_time(self, time):
         return time - time % (1 / VIDEO_FPS)
 
-    @_check_connection_decorator
     @_download_webm_decorator
     def get_nextsound(self, time):
         end_time = time + 1 / VIDEO_FPS
@@ -522,7 +520,7 @@ class VideoFromText(VideoFromImage):       #  Use 'Pv1U9ovsOb' for search
         return self.short_str()
 
 
-class VideoFromImageURL(VideoFromImage):   #  Use 'f5vfFwOTVd' for search
+class VideoFromImageURL(VideoFromImage):   # Use 'f5vfFwOTVd' for search
     """
     Create VideoFromImage(image, duration) where image tooked from
     image_link URL.
@@ -531,19 +529,19 @@ class VideoFromImageURL(VideoFromImage):   #  Use 'f5vfFwOTVd' for search
         from urllib.error import HTTPError
         self.image_link = image_link
         n = 10
-        for i in range(n):
+        for attempt in range(n):
             try:
-                im = Image.open(urlopen(image_link))
+                image = Image.open(urlopen(image_link))
                 break
             except HTTPError as e:
-                print(f"Attemp {i} failed. Start attemp {i+1}.")
-                if i == n - 1:
-                    print(f"Image link {image_link} is uncorrect or no Wi-fi")
+                print(f"Attempt {attempt} failed. Start attempt {attempt+1}.")
+                if attempt == n - 1:
+                    print(f"Image link {image_link} is incorrect or no Wi-fi")
                     raise e
-        if i:
-            print(f"Image sucseddfully downloaded in {i+1} attemps")
-        ndarr = np.array(im)
-        super().__init__(ndarr, duration, sound_channels)
+        if attempt:
+            print(f"Image successfully downloaded in {attempt+1} attempts")
+        image_numpy_array = np.array(image)
+        super().__init__(image_numpy_array, duration, sound_channels)
         
     def short_str(self):
         return str(self)
@@ -616,7 +614,7 @@ class SumOfVideo(Video):              #  Use 'Ci1lua3fAb' for search
     Play video_1 after that play video_2 after that play video_3 and e.c.t.
     It loading video_i in correct time
     """
-    PRELOAD = constants.get_and_write("SumOfVideo.PRELOAD", 10)
+    PRELOAD = PRELOAD_FOR_SUM_OF_VIDEO
     def __init__(self, videos_list, need_copy=True):
         self.need_copy = need_copy
         if need_copy:
@@ -690,7 +688,7 @@ class SumOfVideo(Video):              #  Use 'Ci1lua3fAb' for search
         return rt + ")"
 
 
-class PartsOfOneVideo(SumOfVideo):        #  Use 'GnJ70Y0u1v' for search
+class PartsOfOneVideo(SumOfVideo):        # Use 'GnJ70Y0u1v' for search
     """
     Create sum of parts of one Video
     parts = PartsOfOneVideo(video, ((start0, end0), (start1, end1), ... ))
@@ -783,12 +781,11 @@ class VideoSettings(Video):   #  Use '89FAQvklsC' for search
     Look <class Settings> for info about options
     """
     @Video.deepcopy_video_decorator
-    def __init__(self, video, settings, is_loud_func=lambda sound: True):
+    def __init__(self, video, settings, is_voice_func=lambda sound: True):
         self.video = video
         self.settings = settings
         self.last_loud_time = 0
-        self.is_loud_func = is_loud_func
-
+        self.is_voice_func = is_voice_func
 
     def get_nextsound(self, time):
         s = self.settings
@@ -796,7 +793,7 @@ class VideoSettings(Video):   #  Use '89FAQvklsC' for search
         part = self.video.get_nextsound(time)
         sound = part['sound']
         
-        if self.is_loud_func(sound) or self.last_loud_time > time:
+        if self.is_voice_func(sound) or self.last_loud_time > time:
             self.last_loud_time = time
         if time - self.last_loud_time < s.get_min_quiet_time():
             k = s.get_loud_speed() * s.get_global_speed()
@@ -806,14 +803,13 @@ class VideoSettings(Video):   #  Use '89FAQvklsC' for search
         else:
             k = s.get_quiet_speed() * s.get_global_speed()
             sound = sound * s.get_quiet_volume_cooficient()
-        k = abs(k) if k else 1
+        k = abs(k)
             
         sound = squeeze_sound(sound, k)
         max_sound = min(s.get_max_volume(), 1)
         sound = np.maximum(np.minimum(sound, max_sound), -max_sound)
         sound = np.float32(sound * s.get_volume_cooficient())
         return {'end time': part['end time'], 'sound': sound}
-
 
     def get_frame(self, time):
         im = self.video.get_frame(time)
@@ -842,11 +838,22 @@ class VideoSettings(Video):   #  Use '89FAQvklsC' for search
 
 class SAV0(VideoSettings):
     def __init__(self, video, settings, sound_threshold=0.1):
-        is_loud_func = lambda sound: sound.max() > sound_threshold
-        super().__init__(video, settings, is_loud_func=is_loud_func)
+        def is_voice_func(sound):
+            return sound.max() > sound_threshold
+        super().__init__(video, settings, is_voice_func=is_voice_func)
 
 
-class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
+class SAV1(VideoSettings):
+    def __init__(self, video, settings, frequency_cond):
+        def is_voice_func(sound):
+            number_of_zeros = (sound[1:] * sound[:-1] <= 0).sum()
+            frequency = number_of_zeros / (len(sound) / AUDIO_FPS)
+            # print(frequency, number_of_zeros, len(sound) / AUDIO_FPS, sound.shape)
+            return frequency_cond(frequency)
+        super().__init__(video, settings, is_voice_func=is_voice_func)
+        
+        
+class VideoSaveStream:          # Use 'FwLJImGxRF' for search
     """
     VideoSaveStream - Stream for saving video.
     Syntaxis:
@@ -898,13 +905,7 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
                     raise TypeError(str_to_error_message(msg))
             return True
 
-
-        def get_abs_max(n2array):
-            first, second = n2array[:, 0], n2array[:, 1]
-            indexes = (np.abs(first) > np.abs(second)).astype(int)
-            return first * indexes + second * (1 - indexes)
-
-        class FakeClass():
+        class FakeClass:
             def close(self): pass
 
             def get_real_time(self): return 0
@@ -912,9 +913,7 @@ class VideoSaveStream:          #  Use 'FwLJImGxRF' for search
         mediawriter = FakeClass()
         last_shape, last_time = (-1, -1, 3), -1
         
-        sound_len, frames_len = 0, 0
         cur_time = start_time
-        cur_frame = self.video.get_frame(cur_time)
         while eval(condition):
             cur_frame = self.video.get_frame(cur_time)[:, :, ::-1]
             if int(cur_time / 60) > int(last_time / 60):
@@ -1003,8 +1002,13 @@ class MediaWriter:
         self.videowriter.write(picture)
 
     def _write_audio(self, audio_n2_float_array):
-        sound = audio_n2_float_array[:, 0] * 2 ** 15
+        audio_n2_float_array = np.minimum(audio_n2_float_array, 1)
+        audio_n2_float_array = np.maximum(audio_n2_float_array, -1)
+        # print(np.abs(audio_n2_float_array).max())
+        
+        sound = audio_n2_float_array[:, 0] * (2 ** 15 - 1)
         sound = np.repeat(sound, 2).astype(int).reshape((-1, 2))
+        # print(sound.max())
         self.sound_len += sound.shape[0]
         self.audiowriter.writeframes(sound.tobytes())
 
@@ -1015,3 +1019,5 @@ class MediaWriter:
 
     def get_real_time(self):
         return self.pictures / VIDEO_FPS
+
+
