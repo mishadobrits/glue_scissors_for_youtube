@@ -1,0 +1,7 @@
+youtube-dl
+pafy
+moviepy
+opencv-python
+Pillow
+
+ffmpeg can be seen from the command line
