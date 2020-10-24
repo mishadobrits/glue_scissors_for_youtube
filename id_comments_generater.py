@@ -19,7 +19,7 @@ def get_id_comment(numb=1,
     def get_id():
         return "".join([random.choice(all_symb) for _ in range(id_lenght)])
 
-    return ["#  Use '{}' for search".format(get_id()) for _ in range(numb)]
+    return ["# Use '{}' for search".format(get_id()) for _ in range(numb)]
 
 
 print(get_id_comment(1)[0])

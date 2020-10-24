@@ -157,8 +157,12 @@ Classes tree:
 │    │     
 │    ├─SeparatedVideoAndAudio       #  Use '0uceFGY5J0' for search  
 │    │                               
-│    └─VideoSettings        #  Use '89FAQvklsC' for search│
-│ 
+│    └─VideoSettings                #  Use '89FAQvklsC' for search│
+│          │
+│          ├───SAV0                 #  Use 'uV8px2beVr' for search          
+│          │
+│          └─BadSAV0                # Use '9RBh009v8M' for search
+│
 └VideoSaveStream               #  Use 'FwLJImGxRF' for search
 
 To check whether 'obj' is a video use isinstance(obj, Video)
@@ -170,7 +174,7 @@ Also All Video classes have __str__ method.
 AUDIO_FPS = 44100
 VIDEO_FPS = 24
 PRELOAD_FOR_SUM_OF_VIDEO = 10
-WAIT_ONE_REQUEST_IN_SECONDS = 60
+WAIT_ONE_REQUEST_IN_SECONDS = 10
 
 
 class Video:    # Use 'POFvmLHWHg' for search
@@ -374,14 +378,14 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
             try:
                 link = r"https://www.youtube.com/watch?v=" + self.video_id
                 super().__init__(get_stream_url(self.video_id))
-                print(f"({self.id}): Video '{self.video_id}' sucssesfuly loaded")
+                print(f"({self.id}): Video '{self.video_id}' successfully loaded")
                 break
             except OSError as e:
                 if i == n - 1:
                     raise e
-            print(f"attemp {i}: failed. Start {i + 1} attemp")
+            print(f"attempt {i}: failed. Start {i + 1} attempt")
         if i:
-            print(f"Video sucsessfuly uploaded in {i + 1} attemps")
+            print(f"Video successfully uploaded in {i + 1} attempts")
 
         self.audio = self.audio.set_fps(AUDIO_FPS)
         self.is_downloaded = True
@@ -401,7 +405,7 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
             for attempt in range(10):
                 stoppable_thread = StoppableThread(target=super_calling_func, args=args, kwargs=kwargs)
                 stoppable_thread.start()
-                stoppable_thread.join(5)
+                stoppable_thread.join(WAIT_ONE_REQUEST_IN_SECONDS)
                 stoppable_thread.stop()
                 if is_func_finished:
                     return rt
@@ -836,14 +840,14 @@ class VideoSettings(Video):   #  Use '89FAQvklsC' for search
         return self.long_str()
 
 
-class SAV0(VideoSettings):
+class SAV0(VideoSettings):   # Use 'uV8px2beVr' for search
     def __init__(self, video, settings, sound_threshold=0.1):
         def is_voice_func(sound):
             return sound.max() > sound_threshold
         super().__init__(video, settings, is_voice_func=is_voice_func)
 
 
-class SAV1(VideoSettings):
+class BadSAV0(VideoSettings):  # Use '9RBh009v8M' for search
     def __init__(self, video, settings, frequency_cond):
         def is_voice_func(sound):
             number_of_zeros = (sound[1:] * sound[:-1] <= 0).sum()
@@ -856,7 +860,7 @@ class SAV1(VideoSettings):
 class VideoSaveStream:          # Use 'FwLJImGxRF' for search
     """
     VideoSaveStream - Stream for saving video.
-    Syntaxis:
+    Syntax:
         stream = VideoSaveStream(video, width, height)
         
         # for saving next n seconds

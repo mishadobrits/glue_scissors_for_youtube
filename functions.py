@@ -4,6 +4,8 @@ from PIL import Image, ImageDraw, ImageFont, ImageColor
 import threading
 
 
+""""""
+
 def empty_func(): pass
 
 
