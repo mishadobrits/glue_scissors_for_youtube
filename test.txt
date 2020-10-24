@@ -1,0 +1,19 @@
+VideoFromYoutubeURL("OjXSCDwIa_o")[300:400](quiet_speed=6, sound_threshold=0.05, quiet_volume_cooficient=0.35, min_quiet_time=0.2, volume_cooficient=1, max_quiet_time=3)
+https://www.youtube.com/watch?v=OjXSCDwIa_o
+
+[300:600] [0:300]
+
+(quiet_speed=7, sound_threshold=0.6, min_quiet_time=0.12, quiet_volume_cooficient=0.15)
+(quiet_speed=10, sound_threshold=0.66, min_quiet_time=0.17, quiet_volume_cooficient=0.2) - алгебра Фейгин
+
+(quiet_speed=10, sound_threshold=0.65, min_quiet_time=0.2, quiet_volume_cooficient=0.35) - Дед Дискред
+(quiet_speed=10, sound_threshold=0.55, quiet_volume_cooficient=0.5, min_quiet_time=0.2, volume_cooficient=1)
+
+(quiet_speed=5, sound_threshold=0.15, quiet_volume_cooficient=0.35, min_quiet_time=0.2)
+(quiet_speed=5, sound_threshold=0.75, quiet_volume_cooficient=0.35) - Городенцев Геометрия
+
+(quiet_speed=5, sound_threshold=0.1, quiet_volume_cooficient=0.5) - Красносельский МатАн
+
+
+VideoFromYoutubeURL('1at7kKzBYxI')[307:309, 307:309:0.66](volume_cooficient=0)
+ + VideoFromYoutubeURL('1at7kKzBYxI')[71:77] + VideoFromYoutubeURL('1at7kKzBYxI')[206:212] +  VideoFromYoutubeURL('1at7kKzBYxI')[65:69]
