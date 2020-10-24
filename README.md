@@ -1,11 +1,10 @@
 # glue_scissors_for_youtube
 
 
-Using this library you can
-1) create video by cutting, concatenating, adding audio
-2) create video from text+duration, picture+duration, takes video from youtube and from computer
+Execute url_parser.py
 
+When user enter his string and send it to server, write in "site_to_accelerator" line in format
+"user_id new user's_string"
 
-
-    
-create video from string of code
+When user leave the site, write in "site_to_accelerator" line in
+"user_id close"
