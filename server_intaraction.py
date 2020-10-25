@@ -60,7 +60,7 @@ def video_from_very_short_str(string):
 
 
 class UserProcessing:
-    def __init__(self, video_string, folder, chunk=5 * 60 * 60):
+    def __init__(self, video_string, folder, chunk=5):
         self.video_string = video_string
         self.folder, self.chunk = folder, chunk
         self.stopped, self.closed = False, False
@@ -79,12 +79,12 @@ class UserProcessing:
         it, file_counter = 0, 0
         dur = stream.video.get_duration()
         while it < dur - chunk and not self.closed:
-            # print(f"Writing... {it, it + chunk, folder, file_counter}")
+            # print(f"Writing... {it}, {it + chunk}, {folder}, {file_counter}")
             file_counter = stream.save_part(it, it + chunk, folder, file_counter)
             # file_counter -= 1
             it += chunk
 
-        if it != dur:
+        if it != dur and not self.closed:
             # print(f"last {it, dur}")
             stream.save_part(it, dur, folder, file_counter)
 
@@ -92,66 +92,60 @@ class UserProcessing:
 
     def close(self):
         self.closed = True
+        print(f"{self} closed, {self.closed}")
 
     def is_closed(self):
         return self.closed
 
 
-r"""
-def bad_code_read_one_line_from_test_txt_and_process_it():
+# r"""
+def bad_code_read_one_line_from_test_txt_and_process_it(name="108"):
     with open("test.txt") as f:
         s = f.readline()
-    print("s:", s)
-    # s = f"VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromImageURL('{image_url}', 7)"
-    name = "108"
-    folder = r"C:\Users\m\Desktop\PythonProjects\YouTube_GlueAndScissors\Code\glue_scissors_for_youtube\video\{}/".format(name)
+    print(f"S: {s}")
+    folder = "video/{}/".format(name)
     print(folder)
-    process_str(s, folder, chunk=5 * 60 * 60)
+    UserProcessing(s, folder, chunk=5 * 60 * 60)
 
-"""
 
-users_dict = {}
-while True:
-    with open("site_to_accelerator.txt", "r") as f:
-        lines = f.readlines()
-    with open("site_to_accelerator.txt", "w") as f:
-        f.write("")
-
-    for line in lines:
-        if line == "STOP_THE_PY_FILE":
-            for user in users_dict:
-                users_dict[user].close()
-            exit()
-
-        splitted_line = list(line.split())
-        if len(splitted_line) < 2:
-            print(f"len(l) = len({splitted_line}) = {len(splitted_line)} < 2")
+def start_interaction_with_server():
+    users_dict = {}
+    while True:
+        try:
+            with open("site_to_accelerator.txt", "r") as f:
+                lines = f.readlines()
+            with open("site_to_accelerator.txt", "w") as f:
+                f.write("")
+        except PermissionError:
             continue
 
-        user_id, command = splitted_line[0], splitted_line[1]
-        print(f"See {user_id} {command}")
+        for line in lines:
+            if line == "STOP_THE_PY_FILE":
+                for user in users_dict:
+                    users_dict[user].close()
+                exit()
 
-        if command == "new":
-            users_dict[user_id] = UserProcessing(" ".join(splitted_line[2:]), f"video/{user_id}/")
+            splitted_line = list(line.split())
+            if not splitted_line:
+                continue
+            if len(splitted_line) == 1:
+                print(f"len(l) = len({splitted_line}) = {len(splitted_line)} - bad")
+                continue
 
-        if command == "close":
-            if user_id in users_dict:
-                pass
-            users_dict[user_id].close()
+            user_id, command = splitted_line[0], splitted_line[1]
+            print(f"See {user_id} {command}")
 
-# r"""
-# image_url = r"https://img2.akspic.ru/image/88423-burdzh_halifa-neboskreb-vyshka-zdanie-liniya_gorizonta-1920x1200.jpg"
-# s = "VideoFromYoutubeURL('2WemzwuAQF4')[56: 63, 66: 69]/ VideoFromYoutubeURL('qiZLHchtX8c')[239:249](volume_cooficient = 1.2)"
-# s = r"VideoFromText('Подборка самых\nжизненных фраз\nOneTwo', 3) + VideoFromYoutubeURL('KWbANha2iws')[307:309, 307:309:0.66](volume_cooficient=0) + VideoFromYoutubeURL('KWbANha2iws')[71:77] + VideoFromYoutubeURL('U3-6jv0NCkk')[206:212] +  VideoFromYoutubeURL('A8Fon7DWho4')[65:69]"
-# """
+            if command == "new":
+                users_dict[user_id] = UserProcessing(" ".join(splitted_line[2:]), f"video/{user_id}/")
 
-"""
-temp = videos.VideoFromYoutubeURL('V1sRabJhGWs')
-v1 = temp[0:10, 15:20]
-v2 = temp[0:10]
-v3 = v1 + v2
-v4 = v3 / temp[0:25]
-v5 = v4(volume_cooficient=0)
-for v in [v1, v2, v3, v4, v5]:
-    # print(v.short_str())
-    print(to_url(v))   #https://youtu.be/1at7kKzBYxI """
+            if command == "close":
+                if user_id not in users_dict:
+                    continue
+                users_dict[user_id].close()
+
+
+# if you want to start interaction with server use
+start_interaction_with_server()
+# elif you want accelerate one video and save it
+# bad_code_read_one_line_from_test_txt_and_process_it(name="108")
+
