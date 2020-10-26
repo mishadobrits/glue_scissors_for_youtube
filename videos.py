@@ -1,9 +1,11 @@
 from moviepy.editor import VideoFileClip
+from moviepy.audio.AudioClip import AudioArrayClip
 from cv2 import VideoWriter
 from settings import Settings
 from functions import (in_new_thread, str_to_error_message, get_stream_url,
                        print_time, squeeze_sound, StoppableThread,
-                       image_from_text, ignore_exceptions_decorator_maker)
+                       image_from_text, ignore_exceptions_decorator_maker,
+                       process_float_sound, merge_video_and_audio_and_delete_source)
 import numpy as np
 from bisect import bisect_right
 from PIL import Image
@@ -263,7 +265,7 @@ class Video:    # Use 'POFvmLHWHg' for search
         """
         msg = '''All classes inherited of {} must overload '{}' method;
                  #  Use 'mrQvXrhkKg' for search in videos.py'''
-        raise Exception(str_to_error_message(msg.fotmat(__class__, "get_nextsound")))
+        raise Exception(str_to_error_message(msg.format(__class__, "get_nextsound")))
     
     def get_frame(self, *args, **kwargs): # Use '0t1SPHSW8B' for search
         """
@@ -321,10 +323,6 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
     
     __init__ argumnts:
     ----short_link - link like 'https://www.youtube.com/watch?v=2WemzwuAQF4'
-                     or only video id ('2WemzwuAQF4')
-    ----start_time - time in seconds    (float)
-    ----end_time - time in seconds    (float)
-    ----settings=Settings() - settings for video
 
     __init__ method doesn't load video.
     For loading video use video.get_frame(0) or video.get_nextsound(0).
@@ -374,18 +372,18 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
     def load(self):
         self.start_downloading = True
         n = 10
-        for i in range(n):
+        for attempt in range(n):
             try:
                 link = r"https://www.youtube.com/watch?v=" + self.video_id
                 super().__init__(get_stream_url(self.video_id))
                 print(f"({self.id}): Video '{self.video_id}' successfully loaded")
                 break
             except OSError as e:
-                if i == n - 1:
+                if attempt == n - 1:
                     raise e
-            print(f"attempt {i}: failed. Start {i + 1} attempt")
-        if i:
-            print(f"Video successfully uploaded in {i + 1} attempts")
+            print(f"attempt {attempt}: failed. Start {attempt + 1} attempt")
+        if attempt:
+            print(f"Video successfully uploaded in {attempt + 1} attempts")
 
         self.audio = self.audio.set_fps(AUDIO_FPS)
         self.is_downloaded = True
@@ -394,6 +392,8 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
     def _download_webm_decorator(func):
         def wrapper(*args, **kwargs):
             self = args[0]
+            if not self.is_downloaded:
+                self.load()
             rt, is_func_finished = -1, False
 
             @ignore_exceptions_decorator_maker()
@@ -433,7 +433,7 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
         end_time = time + 1 / VIDEO_FPS
         self.last_asked_time = end_time
         
-        part = {}
+        part = dict()
         part['end time'] = end_time
         part['sound'] = self.audio.subclip(time, end_time).to_soundarray()
         return part
@@ -442,7 +442,7 @@ class VideoFromYoutubeURL(VideoFileClip, Video):     # Use 'H6R9gbClEg' for sear
     def get_duration(self):
         if self.duration == -1:
             msg = ''' .But you don't point out duration in
-                         {}.__init__({}, {}). It trror may be raised if int
+                         {}.__init__({}, {}). It error may be raised if int
                          SumOfVideo previos video have small duration and
                          this video didn't have time to download.
                       '''.format(__class__, self, self.video_id)
@@ -882,7 +882,8 @@ class VideoSaveStream:          # Use 'FwLJImGxRF' for search
         # save frames of video[start_time: end_time] in outputname + ".mp4"
         # save sound of video[start_time: end_time] in outputname + ".mp3"
     """
-    def __init__(self, video, width=-1, height=-1):
+
+    def __init__(self, video, width=-1, height=-1, format="mp4"):
         if not isinstance(video, Video):
             msg = '''VideoStream.__init__  argument must be inherit of
                      Video, type({}) = {} were given'''
@@ -893,17 +894,18 @@ class VideoSaveStream:          # Use 'FwLJImGxRF' for search
         self.w = width if width != -1 else frame.shape[1]
         self.h = height if height != -1 else frame.shape[0]
         self.video.get_nextsound(0)
+        self.MediaWriter = AVIMediaWriter if format.lower() == "avi" else MP4MediaWriter
 
     def _save_part(self, start_time, folder, filecounter,
                    condition="cur_time < end_time"):
         def check_type(part):
-            nessery_keys = ['sound', 'end time']
+            necessary_keys = ['sound', 'end time']
             if not isinstance(part, dict):
                 msg = '''Video.get_nextsound must return 'dict' argument,
                       type({}) = {} were given'''.format(part, type(part))
                 raise TypeError(str_to_error_message(msg))
-            for key in nessery_keys:
-                if not key in part:
+            for key in necessary_keys:
+                if key not in part:
                     msg = '''VideoStream.get_nextsound argument must contain {}, 
                           {} were given'''.format(key, part)
                     raise TypeError(str_to_error_message(msg))
@@ -933,7 +935,7 @@ class VideoSaveStream:          # Use 'FwLJImGxRF' for search
                 last_shape = cur_frame.shape                     
                 path = f"{folder}{filecounter}"
                 filecounter += 1
-                mediawriter = MediaWriter(path, last_shape)
+                mediawriter = self.MediaWriter(path, last_shape)
                 
             mediawriter.write_audio_and_picture(part['sound'], cur_frame)
             cur_time = part['end time']
@@ -965,63 +967,83 @@ class VideoSaveStream:          # Use 'FwLJImGxRF' for search
     def __str__(self):
         return self.long_str()
 
-        
-class MediaWriter:
+
+class _BaseMediaClass:
     def __init__(self, filename, picture_shape):
-        self.filename = filename
-        self.outputname = f"{filename}.avi"
-        self.videoname = f"{filename}_TEMP.mp4"
-        self.audioname =  f"{filename}_TEMP.wav"
-
-        self.videowriter = VideoWriter(self.videoname, -1, VIDEO_FPS, picture_shape[1::-1])
-        self.audiowriter = wave.open(self.audioname, "w")
-        self.audiowriter.setnchannels(4)
-        self.audiowriter.setsampwidth(2)
-        self.audiowriter.setframerate(AUDIO_FPS)
-
-        self.sound_len, self.pictures = 0, 0
-
-    def close(self):
-        import os
-        import subprocess
-        
-        self.videowriter.release()
-        self.audiowriter.close()
-        try:
-            os.unlink(self.outputname)
-        except FileNotFoundError:
-            pass
-
-        cmd = f'ffmpeg -i {self.videoname} -i {self.audioname} -c copy {self.outputname}'
-
-        subprocess.call(cmd, shell=True)
-        print("Video created: ", end = "")
-
-        os.unlink(self.videoname)
-        os.unlink(self.audioname)
-        print("temp files deleted")
-
-    def _write_picture(self, picture):
-        self.pictures += 1
-        self.videowriter.write(picture)
-
-    def _write_audio(self, audio_n2_float_array):
-        audio_n2_float_array = np.minimum(audio_n2_float_array, 1)
-        audio_n2_float_array = np.maximum(audio_n2_float_array, -1)
-        # print(np.abs(audio_n2_float_array).max())
-        
-        sound = audio_n2_float_array[:, 0] * (2 ** 15 - 1)
-        sound = np.repeat(sound, 2).astype(int).reshape((-1, 2))
-        # print(sound.max())
-        self.sound_len += sound.shape[0]
-        self.audiowriter.writeframes(sound.tobytes())
-
-    def write_audio_and_picture(self, audio_n2float_array, picture):
-        self._write_audio(audio_n2float_array)
-        while self.sound_len / AUDIO_FPS > self.pictures / VIDEO_FPS:
-            self._write_picture(picture)
+        self.video_name = filename
+        self.video_writer = VideoWriter(self.video_name, -1, VIDEO_FPS, picture_shape[1::-1])
+        self.pictures, self.sound_len = 0, 0
 
     def get_real_time(self):
         return self.pictures / VIDEO_FPS
+
+    def _write_picture(self, picture):
+        self.pictures += 1
+        self.video_writer.write(picture)
+
+    def close(self):
+        self.video_writer.release()
+
+    def delete_videofile(self):
+        os.unlink(self.video_name)
+
+    def write_sound_decorator(write_audio_func):
+        def wrapper(self, sound):
+            self.sound_len += sound.shape[0]
+            return write_audio_func(self, sound)
+        return wrapper
+
+    def write_audio_and_picture(self, audio_n2float_array, picture):
+        self.write_audio(audio_n2float_array)
+        while self.sound_len / AUDIO_FPS > self.pictures / VIDEO_FPS:
+            self._write_picture(picture)
+
+
+class AVIMediaWriter(_BaseMediaClass):
+    def __init__(self, filename, picture_shape):
+        super().__init__(f"{filename}_TEMP.mp4", picture_shape)
+
+        self.output_name = f"{filename}.avi"
+        self.audio_name = f"{filename}_TEMP.wav"
+
+        self.audio_writer = wave.open(self.audio_name, "w")
+        self.audio_writer.setnchannels(4)
+        self.audio_writer.setsampwidth(2)
+        self.audio_writer.setframerate(AUDIO_FPS)
+
+        self.sound_len = 0
+
+    def close(self):
+        super().close()
+        self.audio_writer.close()
+        merge_video_and_audio_and_delete_source(self.video_name, self.audio_name, self.output_name)
+
+    @_BaseMediaClass.write_sound_decorator
+    def write_audio(self, audio_n2_float_array):
+        sound = process_float_sound(audio_n2_float_array)
+        self.audio_writer.writeframes(sound.tobytes())
+
+
+class MP4MediaWriter(_BaseMediaClass):
+    def __init__(self, filename, picture_shape):
+        super().__init__(f"{filename}_TEMP.mp4", picture_shape)
+        self.output_name = f"{filename}.mp4"
+        self.audio_name = f"{filename}_TEMP.mp3"
+        self.audio_len = 0
+        self.audio_list = []
+
+    @_BaseMediaClass.write_sound_decorator
+    def write_audio(self, sound):
+        self.audio_list.append(sound)
+
+    def close(self):
+        super().close()
+        sound = np.vstack(self.audio_list)
+        AudioArrayClip(sound, AUDIO_FPS).write_audiofile(self.audio_name, logger=None)
+        merge_video_and_audio_and_delete_source(self.video_name, self.audio_name, self.output_name)
+
+
+
+
 
 

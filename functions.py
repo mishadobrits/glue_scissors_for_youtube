@@ -2,11 +2,40 @@ from pafy import new as pafy_new
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageColor
 import threading
+import subprocess
+import os
 
 
 """"""
 
+
 def empty_func(): pass
+
+
+def process_float_sound(audio_n2_float_array):
+    audio_n2_float_array = np.minimum(audio_n2_float_array, 1)
+    audio_n2_float_array = np.maximum(audio_n2_float_array, -1)
+    # print(np.abs(audio_n2_float_array).max())
+
+    sound = audio_n2_float_array[:, 0] * (2 ** 15 - 1)
+    sound = np.repeat(sound, 2).astype(int).reshape((-1, 2))
+    # print(sound.max())
+    return sound
+
+
+def merge_video_and_audio_and_delete_source(video_name, audio_name, output_name):
+    try:
+        os.unlink(output_name)
+    except FileNotFoundError:
+        pass
+    cmd = f'ffmpeg -i {video_name} -i {audio_name} -c copy {output_name}'
+    print(cmd)
+    subprocess.call(cmd, shell=True)
+    print("Video created: ", end="")
+
+    os.unlink(video_name)
+    os.unlink(audio_name)
+    print("temp files deleted")
 
 
 def in_new_thread(function):
