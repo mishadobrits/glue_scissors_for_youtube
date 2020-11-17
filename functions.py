@@ -4,6 +4,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageColor
 import threading
 import subprocess
 import os
+import sys
 
 
 """"""
@@ -24,12 +25,25 @@ def process_float_sound(audio_n2_float_array):
 
 
 def merge_video_and_audio_and_delete_source(video_name, audio_name, output_name):
+    def get_ffmpeg_path():
+        path = sys.executable.replace("\\", "/")
+        path = path[:path.rfind("/") + 1]
+        path += r"Lib/site-packages/imageio_ffmpeg/binaries/"
+        ffmpeg_filename = "Don't find ffmpeg"
+        for elem in os.listdir(path):
+            if elem.startswith("ffmpeg"):
+                ffmpeg_filename = elem
+                break
+        ffmpeg_path = path + ffmpeg_filename
+        return ffmpeg_path
+
+    cmd = f'{get_ffmpeg_path()} -i {video_name} -i {audio_name} -c copy {output_name}'
     try:
         os.unlink(output_name)
     except FileNotFoundError:
         pass
-    cmd = f'ffmpeg -i {video_name} -i {audio_name} -c copy {output_name}'
-    print(cmd)
+    except PermissionError:
+        print(cmd)
     subprocess.call(cmd, shell=True)
     print("Video created: ", end="")
 
@@ -104,22 +118,26 @@ def image_to_new_size(image, new_w, new_h):
 
 
 def image_from_text(text, bg="black", fg="white", font="arial",
-                    letter_size=40, align="center", indent=5, up_indent=-1,
-                    right_indent=-1, down_indent=-1, left_indent=-1):
-    #  Use '90kP2mTP9v' for search
-    """
+                    letter_size=40, align="center", indent=-1, up_indent=-1,
+                    right_indent=-1, down_indent=-1, left_indent=-1, width=-1, height=-1):
+    """    #  Use '90kP2mTP9v' for search
     Create image with specified text.
     kwargs:
-    ----bg="black", fg="white - background and frontground color
-             in im_type format. You can use tuple in 'RGB' format.
+    :"bg="black":, :fg="white: - background and frontground color
+             in 'RGB' format or string'.
              for example (0, 0, 0) - black in 'RGB'.
-    ----font="arial" (can be )
-    ----letter_size=40 - size of one letter
-    ----align="center"(or "left" or "right") - aling of text
-    ----indent=5 - defoult indent
-    ----up_indent, right_indent, down_indent, left_indent=-1 - indents from
-            up, right, down and left.
-            If value not specified it will beconsidered equal 'indent' value
+    :font: "arial" (can be )
+    :letter_size: = 40 - size of one letter
+    :align: = "center"(or "left" or "right") - aling of text
+    :indent: = 5 - default indent
+    :up_indent, right_indent: = -1 indents from up, right
+
+    You can specify only one from (down_indent, height) and only one from (left_indent, width)
+    If you specify both two parameters will used width and height
+
+    :down_indent:, left_indent: = -1 - indents from down and left.
+    :width:, :height: - width and height of picture
+    If value not specified it will be considered equal 'indent' value
     """
     try:
         ImageFont.truetype(font + ".ttf")
@@ -146,7 +164,7 @@ def image_from_text(text, bg="black", fg="white", font="arial",
     check_color_existence(bg)
     check_color_existence(fg)
 
-    im = Image.new("RGB", (1000, 1000), color=bg)
+    im = Image.new("RGB", (width, height), color=bg)
     bg_only = np.array(im)
     ImageDraw.Draw(im).text(
         (0, 0),  # Coordinates
@@ -170,12 +188,29 @@ def image_from_text(text, bg="black", fg="white", font="arial",
      
     def get_indent(value):
         return value if value != -1 else indent
-    
-    up_indent, down_indent = get_indent(up_indent), get_indent(down_indent)
-    right_indent, left_indent = get_indent(right_indent), get_indent(left_indent)
 
-    rt = bg_only[:up_indent + down_indent + bottom - top,
-                 :right_indent + left_indent + right - left]
+    if indent == -1 and (width == -1 or height == -1):
+        msg = "In image_from_text you need specify one from (indent, {}); None of this were given"
+        if width == -1:
+            raise ValueError(msg.fotmat("width"))
+        if height == -1:
+            raise ValueError(msg.fotmat("height"))
+
+    left_indent, up_indent = get_indent(left_indent), get_indent(up_indent)
+    if left_indent == -1:
+        left_indent = (width - im_arr.shape[1]) // 2
+    if up_indent == -1:
+        up_indent = (height - im_arr.shape[0]) // 2
+    if height != -1:
+        down_indent = height - im_arr.shape[0] - up_indent
+    if width != -1:
+        right_indent = width - im_arr.shape[1] - left_indent
+    # print(left_indent, im_arr.shape[1], right_indent, bg_only.shape)
+    # print(up_indent, im_arr.shape[0], down_indent)
+    down_indent, right_indent = get_indent(down_indent), get_indent(right_indent)
+    rt = bg_only[:up_indent + down_indent + im_arr.shape[0],
+                 :right_indent + left_indent + im_arr.shape[1]]
+    # print(rt.shape, rt.shape[1] - right_indent - left_indent)
     rt[up_indent: -down_indent, left_indent: -right_indent] = im_arr
     # Image.fromarray(rt).show()
     return rt
@@ -190,6 +225,10 @@ def ignore_exceptions_decorator_maker(exceptions_expression=Exception, exception
                 return exception_func()
         return wrapper
     return ignore_exceptions_decorator
+
+
+def round_up(value, number_of_digits):
+    return int(value * 10 ** number_of_digits) / 10 ** number_of_digits
 
 
 class StoppableThread(threading.Thread):

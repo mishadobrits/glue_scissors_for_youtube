@@ -60,35 +60,38 @@ def video_from_very_short_str(string):
 
 
 class UserProcessing:
-    def __init__(self, video_string, folder, chunk=5):
+    def __init__(self, video_string, folder, chunk=5, video_extension="mp4"):
         self.video_string = video_string
         self.folder, self.chunk = folder, chunk
         self.stopped, self.closed = False, False
+        self.cur_time = 0
+        self.video_format = video_extension
 
-        self.process_str(folder, chunk=chunk)
+        self.process_str(folder, chunk=chunk, format=video_extension)
 
     @in_new_thread
-    def process_str(self, folder, chunk=5):
+    def process_str(self, folder, chunk=5, format="mp4"):
         import os
         try:
             os.stat(folder)
         except:
             os.makedirs(folder)
 
-        stream = VideoSaveStream(eval(self.video_string))
-        it, file_counter = 0, 0
+        stream = VideoSaveStream(eval(self.video_string), format=format)
+        self.cur_time, file_counter = 0, 0
         dur = stream.video.get_duration()
-        while it < dur - chunk and not self.closed:
+        while self.cur_time < dur - chunk and not self.closed:
             # print(f"Writing... {it}, {it + chunk}, {folder}, {file_counter}")
-            file_counter = stream.save_part(it, it + chunk, folder, file_counter)
-            # file_counter -= 1
-            it += chunk
+            file_counter = stream.save_part(self.cur_time, self.cur_time + chunk, folder, file_counter)
+            self.cur_time += chunk
 
-        if it != dur and not self.closed:
-            # print(f"last {it, dur}")
-            stream.save_part(it, dur, folder, file_counter)
+        if self.cur_time != dur and not self.closed:
+            stream.save_part(self.cur_time, dur, folder, file_counter)  # print(f"last {it, dur}")
 
         print(f"Task '{self.video_string}' successfully completed")
+
+    def set_cur_time(self, cur_time):
+        self.cur_time = cur_time
 
     def close(self):
         self.closed = True
@@ -105,7 +108,7 @@ def bad_code_read_one_line_from_test_txt_and_process_it(name="108"):
     print(f"S: {s}")
     folder = "video/{}/".format(name)
     print(folder)
-    UserProcessing(s, folder, chunk=5 * 60 * 60)
+    UserProcessing(s, folder, chunk=5 * 60 * 60, video_extension="avi")
 
 
 def start_interaction_with_server():
@@ -132,20 +135,31 @@ def start_interaction_with_server():
                 print(f"len(l) = len({splitted_line}) = {len(splitted_line)} - bad")
                 continue
 
-            user_id, command = splitted_line[0], splitted_line[1]
-            print(f"See {user_id} {command}")
+            user_id, command, argument = splitted_line[0], splitted_line[1].lower(), " ".join(splitted_line[2:])
+            print(f"See 'user_id': {user_id}, 'command': {command}, argument: {argument}")
 
             if command == "new":
-                users_dict[user_id] = UserProcessing(" ".join(splitted_line[2:]), f"video/{user_id}/")
+                users_dict[user_id] = UserProcessing(argument, f"video/{user_id}/")
 
             if command == "close":
                 if user_id not in users_dict:
                     continue
                 users_dict[user_id].close()
 
+            if command == "set_time":
+                if user_id not in users_dict:
+                    continue
+                for elem in u"бю/?,":
+                    argument = argument.replace(elem, ".")
+                try:
+                    time = float(argument)
+                except ValueError:
+                    continue
+                users_dict[user_id].set_cur_time(time)
+
 
 # if you want to start interaction with server use
-start_interaction_with_server()
+# start_interaction_with_server()
 # elif you want accelerate one video and save it
-# bad_code_read_one_line_from_test_txt_and_process_it(name="108")
+bad_code_read_one_line_from_test_txt_and_process_it(name="109")
 

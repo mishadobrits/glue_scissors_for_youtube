@@ -3,24 +3,22 @@ import numbers
 from functions import str_to_error_message
 
 
-
 SETTING_EXTENTION = "SVA_settings"
 TRIVIAL_DICT = {'global_speed': 1,
                 'loud_speed': 1,
-                'quiet_speed': 1,
+                'quiet_speed': 6,
                 'min_quiet_time': 0.25,
-                'max_quiet_time': 10 ** 10,
-                'sound_threshold': 0.1,
-                'volume_cooficient': 1,
-                'quiet_volume_cooficient': 1,
-                'loud_volume_cooficient': 1,
+                'max_quiet_time': 3,
+                'sound_threshold': 0,
+                'volume_coefficient': 1,
+                'quiet_volume_coefficient': 0.35,
+                'loud_volume_coefficient': 1,
                 'max_volume': 1,
                 'decrease': 1,
                 'brightness': 1,
                 'contras_ratio': 1,
                 'rotate_image': 0,
-                'inverted': False,
-               }
+                'inverted': False}
 
 
 class Settings:
@@ -48,9 +46,9 @@ class Settings:
                          after max_quiet_time
         sound_threshold - border between loud sound and quiet sound
 
-        volume_cooficient - multiplied by sound
-        quiet_volume_cooficient - multiplied by sound in quiet video parts 
-        loud_volume_cooficient - multiplied by sound in loud video parts 
+        volume_coefficient - multiplied by sound
+        quiet_volume_coefficient - multiplied by sound in quiet video parts 
+        loud_volume_coefficient - multiplied by sound in loud video parts 
         max_volume - if cur_sound > max_volume: cur_sound = max_volume
         
         decrease - # number to !decrease! image
@@ -95,7 +93,7 @@ class Settings:
         def check_type_decorator(func):
             def wrapper(self, arg1, *args, **kwargs):
                 if not isinstance(arg1, excpected_type):
-                   msg = f"""function '{__class__.__name__}.{func.__name__}'
+                   msg = f"""function '{Settings.__name__}.{func.__name__}'
                          expected '{excpected_type.__name__}' type
                          (or inherited classes).
                          Type({arg1}) = '{type(arg1).__name__}' were given."""
@@ -140,25 +138,25 @@ class Settings:
         return self.max_quiet_time
 
     @check_type_decorators_generator()  
-    def set_volume_cooficient(self, value):
-        self.volume_cooficient = abs(value)
+    def set_volume_coefficient(self, value):
+        self.volume_coefficient = abs(value)
 
-    def get_volume_cooficient(self):
-        return self.volume_cooficient
-
-    @check_type_decorators_generator()  
-    def set_quiet_volume_cooficient(self, value):
-        self.quiet_volume_cooficient = abs(value)
-
-    def get_quiet_volume_cooficient(self):
-        return self.quiet_volume_cooficient
+    def get_volume_coefficient(self):
+        return self.volume_coefficient
 
     @check_type_decorators_generator()  
-    def set_loud_volume_cooficient(self, value):
-        self.loud_volume_cooficient = abs(value)
+    def set_quiet_volume_coefficient(self, value):
+        self.quiet_volume_coefficient = abs(value)
 
-    def get_loud_volume_cooficient(self):
-        return self.loud_volume_cooficient
+    def get_quiet_volume_coefficient(self):
+        return self.quiet_volume_coefficient
+
+    @check_type_decorators_generator()  
+    def set_loud_volume_coefficient(self, value):
+        self.loud_volume_coefficient = abs(value)
+
+    def get_loud_volume_coefficient(self):
+        return self.loud_volume_coefficient
 
     @check_type_decorators_generator()  
     def set_max_volume(self, value):
@@ -252,12 +250,12 @@ class Settings:
 """
 Settings(sound_threshold=1).save_to_file(r"settings/without_speeding")
 Settings().save_to_file(r"settings/usual_speeding")
-Settings(volume_cooficient=0).save_to_file(r"settings/no_sound")
+Settings(volume_coefficient=0).save_to_file(r"settings/no_sound")
 print("end") # """
 r"""
 
 # filepath = r"C:\Users\m\Desktop\PythonProjects\SmartAccelerator\2.1.0\no_sound.SVA_parameters
-s = Settings(volume_cooficient = 0)
+s = Settings(volume_coefficient = 0)
 s.set_global_speed(1.1)
 s.set_rotate_image(1.1)
 print(s, s.to_dict(), bool(s), s.get_global_speed()) """
